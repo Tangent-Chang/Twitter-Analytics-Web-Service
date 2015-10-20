@@ -1,0 +1,11 @@
+<web-app version="2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/j2ee" xsi:schemalocation="http:/java.sun.com/dtd/web-app_2_3.dtd">
+  <servlet>
+    <servlet-name>cipher1</servlet-name>
+    <servlet-class>test.CipherServlet</servlet-class>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>cipher1</servlet-name>
+    <url-pattern></url-pattern>
+  </servlet-mapping>
+</web-app>
