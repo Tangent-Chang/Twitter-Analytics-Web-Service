@@ -2,13 +2,15 @@ yum install java-1.7.0-openjdk-devel.x86_64
 
 cd /opt
 wget http://mirror.symnds.com/software/Apache/tomcat/tomcat-8/v8.0.28/bin/apache-tomcat-8.0.28.tar.gz
-tar xzf apache-tomcat-8.0.27.tar.gz
+tar xvf apache-tomcat-8.0.27.tar.gz
 
 copy server.xml to /opt/apache-tomcat-8.0.28/conf
-copy setenv.sh to /opt/apache-tomcat-8.0.28/bin
+copy setenv.sh to /opt/apache-tomcat-8.0.28/bin 
+  m3.large: 6g
+  m3.medium: 
 copy q1 directory to /opt/apache-tomcat-8.0.28/webapps
 
-cd /opt/apache-tomcat-8.0.28/webapps/WEB-INF/classes
+cd /opt/apache-tomcat-8.0.28/webapps/WEB-INF/q1/classes
 javac -cp "/opt/apache-tomcat-8.0.28/lib/*" test/*.java
 
 cd /opt/apache-tomcat-8.0.28/
