@@ -10,7 +10,7 @@ copy setenv.sh to /opt/apache-tomcat-8.0.28/bin
   m3.medium: 
 copy q1 directory to /opt/apache-tomcat-8.0.28/webapps
 
-cd /opt/apache-tomcat-8.0.28/webapps/WEB-INF/q1/classes
+cd /opt/apache-tomcat-8.0.28/webapps/q1/WEB-INF/classes
 javac -cp "/opt/apache-tomcat-8.0.28/lib/*" test/*.java
 
 cd /opt/apache-tomcat-8.0.28/
