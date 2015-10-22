@@ -1,0 +1,47 @@
+
+on instance:
+
+sudo yum update
+
+sudo yum install java-1.7.0-openjdk-devel.x86_64
+
+cd /opt
+sudo wget http://mirror.symnds.com/software/Apache/tomcat/tomcat-8/v8.0.28/bin/apache-tomcat-8.0.28.tar.gz
+sudo tar xvf apache-tomcat-8.0.28.tar.gz
+
+sudo mv ~/server.xml /opt/apache-tomcat-8.0.28/conf
+sudo mv ~/setenv.sh /opt/apache-tomcat-8.0.28/bin
+sudo cp -r ~/q1 /opt/apache-tomcat-8.0.28/webapps
+
+
+cd /opt/apache-tomcat-8.0.28/webapps/q1/WEB-INF/classes
+
+
+sudo javac -cp "/opt/apache-tomcat-8.0.28/lib/*" test/*.java
+
+cd /opt/apache-tomcat-8.0.28/
+
+
+sudo bin/startup.sh
+
+------------
+
+Warm up methods:
+1) while true; do curl http://elbq1-1273158135.us-east-1.elb.amazonaws.com/q1 2>&1 /dev/null; done
+
+2) submitter with multiple short bursts of 2, and 1 minute loadsm with a couple 10 minute bursts in between
+
+duration: ~2 hours
+-------------
+
+final configuration
+
+ELB: 
+	response timeout: 5
+	health check interval : 30
+	unhealthy threshold: 2
+	healthy threshold: 2
+	
+@ $0.025 per Elastic Load Balancer-hour (or partial hour)
+Instances:
+	m3.large X 6 (@ $0.03 each)
