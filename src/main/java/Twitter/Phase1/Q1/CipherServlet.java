@@ -4,9 +4,11 @@ import java.io.*;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
 import javax.servlet.*;
 
+@WebServlet(urlPatterns={"/cipher1"})
 public class CipherServlet extends HttpServlet {
   private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	
