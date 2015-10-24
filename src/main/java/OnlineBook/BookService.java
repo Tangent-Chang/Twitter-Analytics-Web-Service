@@ -55,7 +55,7 @@ public class BookService extends HttpServlet {
         PrintWriter out = response.getWriter();
         Gson bookJson = new Gson();
         String book = bookJson.toJson(newBook);
-        System.out.print(book);
+        //System.out.print(book);
         out.write(book);
         out.flush();
     }
