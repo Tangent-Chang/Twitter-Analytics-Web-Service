@@ -22,11 +22,22 @@ public class TextService extends HttpServlet {
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        //BigInteger userId = new BigInteger(request.getParameter("userid"));
         //String userId = request.getParameter("userid");
-        BigInteger userId = new BigInteger(request.getParameter("userid"));
-        String tweetTime = request.getParameter("tweet_time");
+        //String tweetTime = request.getParameter("tweet_time");
+        //String separator = "";
+
+        String rawQuery = request.getQueryString();
+        String[] query = rawQuery.split("&");
+        String[] userIdQuery = query[0].split("=");
+        String userId = userIdQuery[1];
+        String[] timeQuery = query[1].split("=");
+        String tweetTime = timeQuery[1];
+
+        System.out.printf("%s\n%s\n", userId, tweetTime);
 
         tweetResults = dao.retrieveTweet(userId, tweetTime);
+        //tweetResults = dao.retrieveTweet(userId+separator+tweetTime);
 
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
@@ -34,7 +45,7 @@ public class TextService extends HttpServlet {
 
         out.println("TRINITY,9807-6280-2282");
         for(TweetContent each : tweetResults){
-            out.printf("%s:%d:%s\n", each.getTweetId(), each.getScore(), each.getTweetText());
+            out.printf("%s", each.getLine());
         }
     }
 }

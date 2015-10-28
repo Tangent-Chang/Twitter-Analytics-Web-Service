@@ -6,7 +6,18 @@ import java.math.BigInteger;
  * Created by YHWH on 10/23/15.
  */
 public class TweetContent {
-    private BigInteger tweetId;
+    private String line; //include tweetId, score, tweetText
+
+
+    public TweetContent(String line){
+        this.line = line;
+    }
+
+    public String getLine(){
+        return line;
+    }
+
+    /*private BigInteger tweetId;
     private int score;
     private String tweetText;
 
@@ -24,6 +35,6 @@ public class TweetContent {
     }
     public String getTweetText(){
         return tweetText;
-    }
+    }*/
 
 }
