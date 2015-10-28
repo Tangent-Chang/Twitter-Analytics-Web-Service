@@ -4,14 +4,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.*;
-import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.mapreduce.Job;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -20,9 +16,9 @@ import java.util.ArrayList;
  */
 public class DAOImpl {
     private String dbType;
-    private ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
+    private ArrayList<TweetContent> tweetResults;
     private static Configuration config;
-    private Connection conn;
+    private static Connection conn;
 
     public DAOImpl(String dbType){
         this.dbType = dbType;
@@ -32,6 +28,8 @@ public class DAOImpl {
     public ArrayList<TweetContent> retrieveTweet(String userId, String tweetTime){
         String separator = "|";
 
+        tweetResults = new ArrayList<TweetContent>();
+
         if(dbType.equals("HBase")){
             String rowKey = "\"" + pad(userId) + separator + tweetTime + "\"";
             System.out.printf("DAO: rowkey = %s\n", rowKey);
@@ -40,7 +38,7 @@ public class DAOImpl {
 
         }
         else if(dbType.equals("MySQL")){
-            String idWithTime = "\"" + pad(userId) + separator + tweetTime + "\"";
+            String idWithTime = pad(userId) + separator + tweetTime;
             System.out.printf("DAO: idWithTime = %s\n", idWithTime);
             System.out.printf("DAO: calling MySQL...\n");
             retrieveDataFromMySql(idWithTime);
@@ -51,16 +49,20 @@ public class DAOImpl {
 
     private void retrieveDataFromMySql(String idWithTime){
         connectMySql();
+        System.out.printf("DAO: retrieving data...\n");
 
         String query = "SELECT TWEETID_SCORE_TEXT FROM TWEETS WHERE USER_TIME=?";
 
         try{
             PreparedStatement stmt = conn.prepareStatement(query);
             stmt.setString(1, idWithTime);
+            System.out.printf("DAO: executing query...\n");
             ResultSet rs = stmt.executeQuery();
+            System.out.printf("DAO: get result...\n");
             while(rs.next()){
-                System.out.printf("DAO: data retrieved: %s\n", rs.getString(1));
+
                 TweetContent tweet = new TweetContent(rs.getString(1));
+                System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
                 tweetResults.add(tweet);
             }
 
@@ -120,9 +122,9 @@ public class DAOImpl {
 
             config = HBaseConfiguration.create();
             config.clear();
-            config.set("hbase.zookeeper.quorum", "ec2-54-152-164-175.compute-1.amazonaws.com");
+            config.set("hbase.zookeeper.quorum", "ec2-52-91-174-108.compute-1.amazonaws.com");
             config.set("hbase.zookeeper.property.clientPort","2181");
-            //config.set("hbase.master", "ec2-54-152-164-175.compute-1.amazonaws.com:60000");
+            config.set("hbase.master", "ec2-52-91-174-108.compute-1.amazonaws.com:60000");
             System.out.printf("DAO: connecting HBase...\n");
             HBaseAdmin.checkHBaseAvailable(config);
 
@@ -142,7 +144,14 @@ public class DAOImpl {
             String password = "123456";
             System.out.printf("DAO: connecting MySQL...\n");
             conn = DriverManager.getConnection(url, user, password);
-            System.out.printf("DAO: get MySQL connection...\n");
+            if(conn.isClosed()){
+                System.out.printf("DAO: don't get MySQL connection...\n");
+            }
+            else{
+                System.out.printf("DAO: get MySQL connection...\n");
+            }
+
+
         }
         catch (SQLException e){
             e.printStackTrace();

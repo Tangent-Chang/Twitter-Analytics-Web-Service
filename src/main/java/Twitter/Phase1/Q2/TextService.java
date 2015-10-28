@@ -18,7 +18,7 @@ import java.util.PriorityQueue;
 @WebServlet(urlPatterns={"/twitter/q2"})
 public class TextService extends HttpServlet {
     private ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-    private DAOImpl dao = new DAOImpl("MySQL"); //HBase or MySQL
+    private DAOImpl dao = new DAOImpl("HBase"); //HBase or MySQL
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
