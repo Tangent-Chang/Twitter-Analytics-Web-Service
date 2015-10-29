@@ -15,10 +15,11 @@ import java.util.PriorityQueue;
  * Created by YHWH on 10/23/15.
  */
 
-@WebServlet(urlPatterns={"/twitter/q2"})
+//@WebServlet(urlPatterns={"/twitter/q2"})
+@WebServlet(urlPatterns={"/q2"})
 public class TextService extends HttpServlet {
     private ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-    private DAOImpl dao = new DAOImpl("HBase"); //HBase or MySQL
+    private static DAOImpl dao = new DAOImpl("HBase"); //HBase or MySQL
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -28,16 +29,20 @@ public class TextService extends HttpServlet {
         //String separator = "";
 
         String rawQuery = request.getQueryString();
-        String[] query = rawQuery.split("&");
-        String[] userIdQuery = query[0].split("=");
-        String userId = userIdQuery[1];
-        String[] timeQuery = query[1].split("=");
-        String tweetTime = timeQuery[1];
+        CharSequence sep1 = "&";
+        CharSequence sep2 = "=";
 
-        System.out.printf("%s\n%s\n", userId, tweetTime);
+        if(rawQuery.contains(sep1) || rawQuery.contains(sep2)){
+            String[] query = rawQuery.split("&");
+            String[] userIdQuery = query[0].split("=");
+            String userId = userIdQuery[1];
+            String[] timeQuery = query[1].split("=");
+            String tweetTime = timeQuery[1];
 
-        tweetResults = dao.retrieveTweet(userId, tweetTime);
-        //tweetResults = dao.retrieveTweet(userId+separator+tweetTime);
+            System.out.printf("%s\n%s\n", userId, tweetTime);
+
+            tweetResults = dao.retrieveTweet(userId, tweetTime);
+        }
 
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");

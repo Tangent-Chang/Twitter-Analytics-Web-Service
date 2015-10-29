@@ -14,7 +14,21 @@ public class TweetContent {
     }
 
     public String getLine(){
-        return line;
+        /*String decoded = line.replaceAll("\\\\r", "\r");
+        decoded = decoded.replaceAll("\\\\n", "\n");
+        return decoded;
+        //return line;*/
+
+
+        StringBuffer s = new StringBuffer();
+        String[] tweets = line.split("\n");
+        for (String tweet : tweets) {
+            String decoded = tweet.replaceAll("\\\\r", "\r");
+            decoded = decoded.replaceAll("\\\\n", "\n");
+            s.append(decoded).append(";");
+        }
+
+        return s.toString();
     }
 
     /*private BigInteger tweetId;

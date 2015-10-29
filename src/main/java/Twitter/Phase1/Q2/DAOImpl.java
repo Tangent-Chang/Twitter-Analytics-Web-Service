@@ -6,6 +6,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 import java.sql.*;
@@ -17,8 +18,8 @@ import java.util.ArrayList;
 public class DAOImpl {
     private String dbType;
     private ArrayList<TweetContent> tweetResults;
-    private static Configuration config;
-    private static Connection conn;
+    private static Configuration config = null;
+    private static Connection conn = null;
 
     public DAOImpl(String dbType){
         this.dbType = dbType;
@@ -48,19 +49,22 @@ public class DAOImpl {
     }
 
     private void retrieveDataFromMySql(String idWithTime){
-        connectMySql();
+
         System.out.printf("DAO: retrieving data...\n");
 
         String query = "SELECT TWEETID_SCORE_TEXT FROM TWEETS WHERE USER_TIME=?";
 
         try{
+            if(conn==null || conn.isClosed()){
+                connectMySql();
+            }
+
             PreparedStatement stmt = conn.prepareStatement(query);
             stmt.setString(1, idWithTime);
             System.out.printf("DAO: executing query...\n");
             ResultSet rs = stmt.executeQuery();
             System.out.printf("DAO: get result...\n");
             while(rs.next()){
-
                 TweetContent tweet = new TweetContent(rs.getString(1));
                 System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
                 tweetResults.add(tweet);
@@ -70,11 +74,6 @@ public class DAOImpl {
         catch (SQLException e){
             e.printStackTrace();
         }
-
-        //connection
-        //PreparedStatement sql query
-        //process sql result
-        //save result to the arraylist
     }
     private void retrieveDataFromHBase(String rowKey){
 
@@ -92,17 +91,25 @@ public class DAOImpl {
         try{
             HTable table = new HTable(config, "teamproject");
 
-            Get get = new Get(rowKey.getBytes());
-            Result rs = table.get(get);
+            Get g = new Get(rowKey.getBytes());
+            //Get g = new Get(Bytes.toBytes(rowKey));
+            Result rs = table.get(g);
+            System.out.printf("DAO: get result...\n");
 
-            for(KeyValue kv : rs.raw()){
-                //System.out.print(new String(kv.getRow()) + " " );
-                //System.out.print(new String(kv.getFamily()) + ":" );
-                //System.out.print(new String(kv.getQualifier()) + " " );
-                //System.out.print(kv.getTimestamp() + " " );
-                //System.out.println(new String(kv.getValue()));
-                tweetResults.add(new TweetContent(kv.getValue().toString()));
-            }
+
+            byte[] value = rs.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("value"));
+            String valueStr = Bytes.toString(value);
+            System.out.printf("DAO: result = %s\n", valueStr);
+
+            /*for(KeyValue kv : rs.raw()){
+                System.out.print(new String(kv.getRow()) + " " );
+                System.out.print(new String(kv.getFamily()) + ":" );
+                System.out.print(new String(kv.getQualifier()) + " " );
+                System.out.print(kv.getTimestamp() + " " );
+                System.out.println(new String(kv.getValue()));
+                String line = kv.getValue().toString();
+            }*/
+            tweetResults.add(new TweetContent(valueStr));
         }
         catch(IOException e){
             e.printStackTrace();
@@ -122,9 +129,9 @@ public class DAOImpl {
 
             config = HBaseConfiguration.create();
             config.clear();
-            config.set("hbase.zookeeper.quorum", "ec2-52-91-174-108.compute-1.amazonaws.com");
+            config.set("hbase.zookeeper.quorum", "ec2-52-91-232-33.compute-1.amazonaws.com");
             config.set("hbase.zookeeper.property.clientPort","2181");
-            config.set("hbase.master", "ec2-52-91-174-108.compute-1.amazonaws.com:60000");
+            config.set("hbase.master", "ec2-52-91-232-33.compute-1.amazonaws.com:60000");
             System.out.printf("DAO: connecting HBase...\n");
             HBaseAdmin.checkHBaseAvailable(config);
 
@@ -135,11 +142,10 @@ public class DAOImpl {
     }
 
     public void connectMySql(){
-
-
         try{
             Class.forName("com.mysql.jdbc.Driver");
-            String url = "jdbc:mysql://ec2-52-23-196-65.compute-1.amazonaws.com:3306/teamproject"; //ec2-52-23-196-65.compute-1.amazonaws.com
+            //String url = "jdbc:mysql://ec2-52-23-165-85.compute-1.amazonaws.com:3306/teamproject";
+            String url = "jdbc:mysql://localhost:3306/teamproject";
             String user = "client";
             String password = "123456";
             System.out.printf("DAO: connecting MySQL...\n");
