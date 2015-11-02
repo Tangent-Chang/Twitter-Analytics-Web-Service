@@ -1,4 +1,6 @@
-package Twitter.Phase1.Q2;
+package Twitter.Service;
+
+import Twitter.Database.DAOImpl;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -7,31 +9,25 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.PriorityQueue;
 
 /**
  * Created by YHWH on 10/23/15.
  */
 
-//@WebServlet(urlPatterns={"/twitter/q2"})
 @WebServlet(urlPatterns={"/q2"})
 public class TextService extends HttpServlet {
     private ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-    private static DAOImpl dao = new DAOImpl("HBase"); //HBase or MySQL
+    private DAOImpl dao = new DAOImpl("HBase"); //HBase or MySQL
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        //BigInteger userId = new BigInteger(request.getParameter("userid"));
-        //String userId = request.getParameter("userid");
-        //String tweetTime = request.getParameter("tweet_time");
-        //String separator = "";
 
         String rawQuery = request.getQueryString();
         CharSequence sep1 = "&";
         CharSequence sep2 = "=";
 
+        //check request parameters, if lack information, don't process this quest
         if(rawQuery.contains(sep1) || rawQuery.contains(sep2)){
             String[] query = rawQuery.split("&");
             String[] userIdQuery = query[0].split("=");
@@ -41,6 +37,7 @@ public class TextService extends HttpServlet {
 
             System.out.printf("%s\n%s\n", userId, tweetTime);
 
+            //retrieve data from DB with parameters
             tweetResults = dao.retrieveTweet(userId, tweetTime);
         }
 
@@ -48,6 +45,7 @@ public class TextService extends HttpServlet {
         response.setCharacterEncoding("UTF-8");
         PrintWriter out = response.getWriter();
 
+        //print out multiple results
         out.println("TRINITY,9807-6280-2282");
         for(TweetContent each : tweetResults){
             out.printf("%s", each.getLine());

@@ -1,4 +1,4 @@
-package Twitter.Phase1.Q2;
+package Twitter.Database;
 
 /**
  * Created by YHWH on 10/28/15.
