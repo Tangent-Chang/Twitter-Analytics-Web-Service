@@ -19,13 +19,22 @@ public class DAOImpl {
     private String dbType;
     private ArrayList<TweetContent> tweetResults;
     //should try multi connection, that is connection pool
-    private static Configuration config = null;
-    private static Connection conn = null;
+    private Configuration config = null;
+    private Connection conn = null;
+    private static ConnectionPool connPool = null;
 
     //setup which DB type this DAO object is going to deal with
     public DAOImpl(String dbType){
-        this.dbType = dbType;
         //System.out.printf("DAO: initializing...\n");
+        this.dbType = dbType;
+        try{
+            if(connPool == null){
+                this.connPool = new ConnectionPool();
+            }
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
     }
 
     //call DB proccessor to retrieve data from DB
@@ -72,6 +81,7 @@ public class DAOImpl {
                 //System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
                 tweetResults.add(tweet);
             }
+            connPool.closeConnection(conn);
 
         }
         catch (SQLException e){
@@ -120,12 +130,14 @@ public class DAOImpl {
 
     public void connectMySql(){
         try{
-            Class.forName("com.mysql.jdbc.Driver");
+            conn = connPool.getConnection();
+
+            /*Class.forName("com.mysql.jdbc.Driver");
             String url = "jdbc:mysql://localhost:3306/teamproject";
             String user = "client";
             String password = "123456";
             System.out.printf("DAO: connecting MySQL...\n");
-            conn = DriverManager.getConnection(url, user, password);
+            conn = DriverManager.getConnection(url, user, password);*/
             if(conn.isClosed()){
                 System.out.printf("DAO: don't get MySQL connection...\n");
             }
@@ -136,10 +148,18 @@ public class DAOImpl {
         catch (SQLException e){
             e.printStackTrace();
         }
-        catch (ClassNotFoundException e){
+        /*catch (ClassNotFoundException e){
+            e.printStackTrace();
+        }*/
+
+    }
+    public void disconnectMysql(){
+        try{
+            connPool.closeConnection(conn);
+        }
+        catch (SQLException e){
             e.printStackTrace();
         }
-
     }
 
     //9223372036854775807 is Long.MAX_VALUE, length is 19. negative may be 20

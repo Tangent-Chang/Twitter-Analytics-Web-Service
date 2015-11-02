@@ -12,23 +12,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-public class DBUtil {
-    private Properties props;
+public class ConnectionPool {
+    //private Properties props;
     private String url;
     private String user;
     private String passwd;
-    private int max; // 連接池中最大Connection數目
-    private List<Connection> connections;
+    static private int max; // 連接池中最大Connection數目
+    static private List<Connection> connections;
 
-    public DBUtil() throws IOException, ClassNotFoundException {
+    /*public DBUtil() throws IOException, ClassNotFoundException {
         this("jdbc.properties");
-    }
+    }*/
 
-    public DBUtil(String configFile) throws IOException, ClassNotFoundException {
-        props = new Properties();
-        props.load(new FileInputStream(configFile));
+    public ConnectionPool() throws ClassNotFoundException {
+        //props = new Properties();
+        //props.load(new FileInputStream(configFile));
 
-        url = "jdbc:mysql://ec2-52-23-196-65.compute-1.amazonaws.com:3306/teamproject";
+        url = "jdbc:mysql://localhost:3306/teamproject";
         user = "client";
         passwd = "123456";
         max = 20;
