@@ -18,7 +18,9 @@ public class TweetContent {
         for (String tweet : tweets) {
             String decoded = tweet.replaceAll("\\\\r", "\r");
             decoded = decoded.replaceAll("\\\\n", "\n");
-            s.append(decoded).append(";");
+            //s.append(decoded).append(";");
+            s.append(decoded).append("\n");
+            //s.append(decoded);
         }
 
         return s.toString();
