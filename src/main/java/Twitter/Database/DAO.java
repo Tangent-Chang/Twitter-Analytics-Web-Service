@@ -1,6 +1,7 @@
 package Twitter.Database;
 
 import Twitter.Service.TweetContent;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.*;
@@ -15,25 +16,28 @@ import java.util.ArrayList;
 /**
  * Created by YHWH on 10/23/15.
  */
-public class DAOImpl {
+public class DAO {
     private String dbType;
     private ArrayList<TweetContent> tweetResults;
-    //should try multi connection, that is connection pool
     private Configuration config = null;
-    private Connection conn = null;
-    private static ConnectionPool connPool = null;
+    private HikariDataSource hikari = null;
 
     //setup which DB type this DAO object is going to deal with
-    public DAOImpl(String dbType){
-        //System.out.printf("DAO: initializing...\n");
+    public DAO(String dbType){
+        System.out.printf("DAO: initializing...\n");
         this.dbType = dbType;
-        try{
-            if(connPool == null){
-                this.connPool = new ConnectionPool();
-            }
-        }
-        catch(Exception e){
-            e.printStackTrace();
+        initialPool();
+    }
+    private void initialPool(){
+        if(hikari == null){
+            hikari = new HikariDataSource();
+            hikari.setMaximumPoolSize(10);
+            hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
+            hikari.addDataSourceProperty("serverName", "ec2-54-165-40-120.compute-1.amazonaws.com");
+            hikari.addDataSourceProperty("port", "3306");
+            hikari.addDataSourceProperty("databaseName", "teamproject");
+            hikari.addDataSourceProperty("user", "client");
+            hikari.addDataSourceProperty("password", "123456");
         }
     }
 
@@ -45,54 +49,69 @@ public class DAOImpl {
 
         if(dbType.equals("HBase")){
             String rowKey = "\"" + pad(userId) + separator + tweetTime + "\"";
-            //System.out.printf("DAO: rowkey = %s\n", rowKey);
-            //System.out.printf("DAO: calling HBase...\n");
+            System.out.printf("DAO: rowkey = %s\n", rowKey);
+            System.out.printf("DAO: calling HBase...\n");
             retrieveDataFromHBase(rowKey);
-
         }
         else if(dbType.equals("MySQL")){
             String idWithTime = pad(userId) + separator + tweetTime;
-            //System.out.printf("DAO: idWithTime = %s\n", idWithTime);
-            //System.out.printf("DAO: calling MySQL...\n");
+            System.out.printf("DAO: idWithTime = %s\n", idWithTime);
+            System.out.printf("DAO: calling MySQL...\n");
             retrieveDataFromMySql(idWithTime);
         }
-
         return tweetResults;
     }
 
     private void retrieveDataFromMySql(String idWithTime){
 
-        //System.out.printf("DAO: retrieving data...\n");
+        System.out.printf("DAO: retrieving data...\n");
+
+        Connection conn = null;
+        PreparedStatement stmt = null;
 
         String query = "SELECT TWEETID_SCORE_TEXT FROM TWEETS WHERE USER_TIME=?";
 
         try{
-            if(conn==null || conn.isClosed()){
-                connectMySql();
-            }
+            conn = hikari.getConnection();
 
-            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt = conn.prepareStatement(query);
             stmt.setString(1, idWithTime);
-            //System.out.printf("DAO: executing query...\n");
+            System.out.printf("DAO: executing query...\n");
             ResultSet rs = stmt.executeQuery();
-            //System.out.printf("DAO: get result...\n");
+            System.out.printf("DAO: get result...\n");
             while(rs.next()){
                 TweetContent tweet = new TweetContent(rs.getString(1));
-                //System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
+                System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
                 tweetResults.add(tweet);
             }
-            connPool.closeConnection(conn);
-
         }
         catch (SQLException e){
             e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                try{
+                    conn.close();
+                }
+                catch(SQLException e){
+                    e.printStackTrace();
+                }
+            }
+            if(stmt != null){
+                try{
+                    stmt.close();
+                }
+                catch (SQLException e){
+                    e.printStackTrace();
+                }
+            }
         }
     }
     private void retrieveDataFromHBase(String rowKey){
 
         connectHBase();
 
-        //System.out.printf("DAO: retrieving data...\n");
+        System.out.printf("DAO: retrieving data...\n");
 
         try{
             HTable table = new HTable(config, "teamproject");
@@ -119,45 +138,11 @@ public class DAOImpl {
             config.set("hbase.zookeeper.quorum", "ec2-52-91-232-33.compute-1.amazonaws.com");
             config.set("hbase.zookeeper.property.clientPort","2181");
             config.set("hbase.master", "ec2-52-91-232-33.compute-1.amazonaws.com:60000");
-            System.out.printf("DAO: connecting HBase...\n");
+            System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
             HBaseAdmin.checkHBaseAvailable(config);
 
         }
         catch(IOException e){
-            e.printStackTrace();
-        }
-    }
-
-    public void connectMySql(){
-        try{
-            conn = connPool.getConnection();
-
-            /*Class.forName("com.mysql.jdbc.Driver");
-            String url = "jdbc:mysql://localhost:3306/teamproject";
-            String user = "client";
-            String password = "123456";
-            System.out.printf("DAO: connecting MySQL...\n");
-            conn = DriverManager.getConnection(url, user, password);*/
-            if(conn.isClosed()){
-                System.out.printf("DAO: don't get MySQL connection...\n");
-            }
-            else{
-                System.out.printf("DAO: get MySQL connection...\n");
-            }
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        /*catch (ClassNotFoundException e){
-            e.printStackTrace();
-        }*/
-
-    }
-    public void disconnectMysql(){
-        try{
-            connPool.closeConnection(conn);
-        }
-        catch (SQLException e){
             e.printStackTrace();
         }
     }

@@ -1,6 +1,6 @@
 package Twitter.Service;
 
-import Twitter.Database.DAOImpl;
+import Twitter.Database.DAO;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -18,7 +18,7 @@ import java.util.ArrayList;
 @WebServlet(urlPatterns={"/q2"})
 public class TextService extends HttpServlet {
     private ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-    private DAOImpl dao = new DAOImpl("HBase"); //HBase or MySQL
+    private DAO dao = new DAO("MySQL"); //HBase or MySQL
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
