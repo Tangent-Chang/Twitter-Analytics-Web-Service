@@ -44,7 +44,7 @@ public class SentimentScoreCalculatorTest {
     // distort -2
     // glamourous 3
     String text = "dIsTort*glAmouROus";
-    assertTrue(calculator.calculate(text).equals("1"));
+    assertEquals(1, calculator.calculate(text));
   }
   
   /**
@@ -53,7 +53,7 @@ public class SentimentScoreCalculatorTest {
   @Test
   public void testTwoUninvolvedWords() {
     String text = "a!b";
-    assertTrue(calculator.calculate(text).equals("0"));
+    assertEquals(0, calculator.calculate(text));
   }
   
   /**
@@ -62,7 +62,7 @@ public class SentimentScoreCalculatorTest {
   @Test
   public void testOneInvolvedWordAndOneUninvolvedWord() {
     String text = "distort#ccc";
-    assertTrue(calculator.calculate(text).equals("-2"));
+    assertEquals(-2, calculator.calculate(text));
   }
   
   /** The calculator. */

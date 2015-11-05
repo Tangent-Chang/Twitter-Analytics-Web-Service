@@ -19,17 +19,17 @@ public class SentimentScoreCalculator {
    *          the words
    * @return the string
    */
-  public String calculate(String text) {
+  public long calculate(String text) {
     String[] words = text.split("[\\W_]");
-
-    Integer value = 0;
+    long value = 0;
     for (int i = 0; i < words.length; i++) {
       String lowerCase = words[i].toLowerCase();
-      if (dictionary.containsKey(lowerCase)) {
-        value += dictionary.get(lowerCase);
+      Integer wordScore = dictionary.get(lowerCase);
+      if (wordScore != null) {
+        value += wordScore;
       }
     }
-    return String.valueOf(value);
+    return value;
   }
 
   public void generateDictionaryCode() {

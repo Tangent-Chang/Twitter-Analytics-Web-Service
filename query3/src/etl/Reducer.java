@@ -2,13 +2,10 @@ package etl;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 /**
  * The Class Reducer.
@@ -33,10 +30,10 @@ public class Reducer {
    * Instantiates a new reducer.
    */
   public Reducer() {
-
-    currentKey = null;
-    currentTweets = new TreeMap<Long, String>();
   }
+  
+  static Pattern tabPattern = Pattern.compile("\t");
+  static Pattern pipePattern = Pattern.compile("|");
   
   /**
    * Reduce.
@@ -44,104 +41,39 @@ public class Reducer {
   public void reduce() {
     String line;
 
-    try {
-      reader = new BufferedReader(new InputStreamReader(System.in, Charset.forName("UTF-8")));
-      writer = new BufferedWriter(new OutputStreamWriter(System.out, Charset.forName("UTF-8")));
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, Charset.forName("UTF-8")));
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(System.out, Charset.forName("UTF-8")))) {
       
       while ((line = reader.readLine()) != null) {
         try {
-          String[] parts = line.split("\t");
-          String key = parts[0];
-          Long tweetId = Long.parseLong(parts[1]);
-          String score = parts[2];
-          String text = Escape.decodeBackslashT(parts[3]);
+        	String[] parts = tabPattern.split(line, 3);
+        	String[] key = pipePattern.split(parts[0]);
+        	String userId = key[0];
+        	String createdAt = key[1];
+        	String tweetId = key[2];
+        	String score = parts[1];
+          String text = Escape.decodeBackslashT(parts[2]);
           
-          String value = tweetId.toString() + ":" + score + ":" + text;
-          if (!key.equals(currentKey)) {
-            printLastKeyValue();
-            resetCurrentKeyValue(key);
-          }
-          
-          if (!currentTweets.containsKey(tweetId)) {
-            currentTweets.put(tweetId, value);
-          }
+          StringBuilder buffer = new StringBuilder();
+          buffer.append(userId)
+          		.append(',')
+          		.append(createdAt)
+          		.append(',')
+          		.append(tweetId)
+          		.append(',')
+          		.append(score)
+          		.append(",")
+          		.append('"')
+          		.append(text)
+          		.append('"')
+          		.append('\n');
+          writer.write(buffer.toString());
         } catch (Exception e) {
 //          System.err.println(e);
         }
       }
-      printLastKeyValue();
-      writer.flush();
     } catch (Exception e) {
       System.err.println(e);
     }
   }
-  
-  /**
-   * Prints the last key value.
-   */
-  public void printLastKeyValue() {
-    if (currentKey == null) {
-      return;
-    }
-    
-    StringBuffer result = new StringBuffer();
-    result.append("\"").append(currentKey).append("\"\t\""); // have to use \t
-    
-    Iterator<?> iterator = currentTweets.entrySet().iterator();
-    while(iterator.hasNext()) {
-      Entry entry = (Entry) iterator.next();
-      result.append(entry.getValue());
-      if(iterator.hasNext()) {
-        result.append("\n"); // for mapreduce
-//        result.append(";"); // for reference server
-      }
-    }
-    
-    result.append("\"\n"); // for mapreduce
-//    result.append(";\"\n"); // for reference server
-    
-    try {
-      writer.write(result.toString());
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-  
-  /**
-   * Reset current key value.
-   *
-   * @param key the key
-   */
-  public void resetCurrentKeyValue(String key) {
-    currentKey = key;
-    currentTweets.clear();
-  }
-  
-  public void print() {
-    try {
-      reader = new BufferedReader(new InputStreamReader(System.in, Charset.forName("UTF-8")));
-      writer = new BufferedWriter(new OutputStreamWriter(System.out, Charset.forName("UTF-8")));
-      String line;
-      
-      while ((line = reader.readLine()) != null) {
-        writer.write(line);
-        writer.write("\n");
-      }
-      writer.flush();
-    } catch (Exception e) {
-      System.out.println(e);
-    }
-    
-  }
-  /** The reader. */
-  private BufferedReader reader;
-  
-  /** The writer. */
-  private BufferedWriter writer;
-  
-  /** The current key. */
-  private String currentKey;
-  
-  /** The current tweets. */
-  private TreeMap<Long, String> currentTweets;
 }

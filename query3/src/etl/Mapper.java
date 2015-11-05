@@ -46,26 +46,33 @@ public class Mapper {
           if (tweet == null) {
             continue; // filter out malformed tweet
           }
+          
+          long userId = tweet.getUser().getId();
+          long tweetId = tweet.getId();
   
-          String timeStamp = timeFilter.format(tweet.getCreatedAt());
-          if (timeStamp == null) {
-            continue; // filter out incorrect or early time tweet
+          String createdAt = timeFilter.parseDate(tweet.getCreatedAt());
+          if (createdAt == null) {
+            continue; // filter out incorrect time
           }
-  
-          String userIdWithPadding = UserIdPadder.pad(tweet.getUser().getIdStr());
           
           String text = tweet.getText();
-          String sentimentScore = sentimentScoreCalculator.calculate(text);
+          long sentimentScore = sentimentScoreCalculator.calculate(text);
+          long followersCount = tweet.getUser().getFollowersCount();
+          long score = sentimentScore * (1 + followersCount);
           text = textCensor.censor(text);
           text = Escape.encode(text);
           
-          StringBuffer buffer = new StringBuffer();
-          buffer.append(userIdWithPadding).append("|").append(timeStamp)
-                .append("\t")
-                .append(tweet.getIdStr()).append("\t")
-                .append(sentimentScore).append("\t")
-                .append(text)
-                .append("\n");
+          StringBuilder buffer = new StringBuilder();
+          buffer.append(userId)    // This
+          		.append('|')         // is
+          		.append(createdAt)   // the
+          		.append('|')         // MR
+          		.append(tweetId)     // key
+          		.append('\t')        // Now follows data
+          		.append(score)
+          		.append('\t')
+              .append(text)
+              .append('\n');
   
 //          String[] temp = buffer.toString().split("\\|");
           writer.write(buffer.toString());
@@ -76,24 +83,6 @@ public class Mapper {
     } catch (Exception e) {
       System.out.println(e);
     }
-  }
-
-  /**
-   * Builds the tweet text.
-   *
-   * @param textWords the text words
-   * @return the string
-   */
-  public String buildTweetText(String[] textWords) {
-    StringBuilder builder = new StringBuilder();
-    for (int i = 0; i < textWords.length; i++) {
-      builder.append(textWords[i]);
-      if (i != textWords.length - 1) {
-        builder.append(" ");
-      }
-    }
-
-    return builder.toString();
   }
 
   /** The tweet parser. */

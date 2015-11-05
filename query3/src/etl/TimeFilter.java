@@ -31,19 +31,12 @@ public class TimeFilter {
    * @param createdAt the created at
    * @return the string
    */
-  public String format(String createdAt) {
-    Date date = null;
+  public String parseDate(String createdAt) {
     try {
-      date = inputFormat.parse(createdAt);
+      return outputFormat.format(inputFormat.parse(createdAt));
     } catch (ParseException e) {
       return null; // if parse exception, filter it
     }
-    
-    if (date.before(startDate)) {
-      return null; // if before the date, ignore
-    }
-    
-    return outputFormat.format(date);
   }
 
   /** The date format input. */
@@ -52,7 +45,7 @@ public class TimeFilter {
   
   /** The date format output. */
   // e.g. 2014-05-31+01:29:04
-  private final String DATE_FORMAT_OUTPUT = "yyyy-MM-dd+HH:mm:ss";
+  private final String DATE_FORMAT_OUTPUT = "yyyy-MM-dd";
   
   /** The input format. */
   private SimpleDateFormat inputFormat;
