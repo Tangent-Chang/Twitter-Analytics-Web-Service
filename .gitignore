@@ -4,3 +4,6 @@ environment/
 reference.txt
 out/
 target/
+query3/.classpath
+query3/.project
+query3/bin/
