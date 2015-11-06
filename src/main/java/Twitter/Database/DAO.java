@@ -11,27 +11,28 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 
 /**
  * Created by YHWH on 10/23/15.
  */
 public class DAO {
     private String dbType;
-    private ArrayList<TweetContent> tweetResults;
     private Configuration config = null;
-    private HikariDataSource hikari = null;
+    private static HikariDataSource hikari = null;
 
     //setup which DB type this DAO object is going to deal with
     public DAO(String dbType){
-        System.out.printf("DAO: initializing...\n");
+        //System.out.printf("DAO: initializing...\n");
         this.dbType = dbType;
         initialPool();
     }
-    private void initialPool(){
+    private static void initialPool(){
         if(hikari == null){
             hikari = new HikariDataSource();
-            hikari.setMaximumPoolSize(10);
+            hikari.setMaximumPoolSize(100);
             hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
             hikari.addDataSourceProperty("serverName", "localhost");
             hikari.addDataSourceProperty("port", "3306");
@@ -44,30 +45,30 @@ public class DAO {
     //call DB proccessor to retrieve data from DB
     public ArrayList<TweetContent> retrieveTweet(String userId, String tweetTime){
         String separator = "|";
-
-        tweetResults = new ArrayList<TweetContent>();
+        ArrayList<TweetContent> tweetResults = null;
 
         if(dbType.equals("HBase")){
             String rowKey = "\"" + pad(userId) + separator + tweetTime + "\"";
-            System.out.printf("DAO: rowkey = %s\n", rowKey);
-            System.out.printf("DAO: calling HBase...\n");
-            retrieveDataFromHBase(rowKey);
+            //System.out.printf("DAO: rowkey = %s\n", rowKey);
+            //System.out.printf("DAO: calling HBase...\n");
+            tweetResults = retrieveDataFromHBase(rowKey);
         }
         else if(dbType.equals("MySQL")){
             String idWithTime = pad(userId) + separator + tweetTime;
-            System.out.printf("DAO: idWithTime = %s\n", idWithTime);
-            System.out.printf("DAO: calling MySQL...\n");
-            retrieveDataFromMySql(idWithTime);
+            //System.out.printf("DAO: idWithTime = %s\n", idWithTime);
+            //System.out.printf("DAO: calling MySQL...\n");
+            tweetResults = retrieveDataFromMySql(idWithTime);
         }
         return tweetResults;
     }
 
-    private void retrieveDataFromMySql(String idWithTime){
+    private ArrayList<TweetContent> retrieveDataFromMySql(String idWithTime){
 
-        System.out.printf("DAO: retrieving data...\n");
+        //System.out.printf("DAO: retrieving data...\n");
 
         Connection conn = null;
         PreparedStatement stmt = null;
+        ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
 
         String query = "SELECT TWEETID_SCORE_TEXT FROM QUERY2 WHERE USER_TIME=?";
 
@@ -76,12 +77,13 @@ public class DAO {
 
             stmt = conn.prepareStatement(query);
             stmt.setString(1, idWithTime);
+
             System.out.printf("DAO: executing query...\n");
             ResultSet rs = stmt.executeQuery();
             System.out.printf("DAO: get result...\n");
             while(rs.next()){
                 TweetContent tweet = new TweetContent(rs.getString(1));
-                System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
+                //System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
                 tweetResults.add(tweet);
             }
         }
@@ -106,29 +108,33 @@ public class DAO {
                 }
             }
         }
+        return tweetResults;
     }
-    private void retrieveDataFromHBase(String rowKey){
+    private ArrayList<TweetContent> retrieveDataFromHBase(String rowKey){
 
         connectHBase();
 
-        System.out.printf("DAO: retrieving data...\n");
+        ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
+
+        //System.out.printf("DAO: retrieving data...\n");
 
         try{
             HTable table = new HTable(config, "teamproject");
 
             Get g = new Get(rowKey.getBytes());
             Result rs = table.get(g);
-            System.out.printf("DAO: get result...\n");
+            //System.out.printf("DAO: get result...\n");
 
             byte[] value = rs.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("value"));
             String valueStr = Bytes.toString(value);
-            System.out.printf("DAO: result = %s\n", valueStr);
+            //System.out.printf("DAO: result = %s\n", valueStr);
 
             tweetResults.add(new TweetContent(valueStr));
         }
         catch(IOException e){
             e.printStackTrace();
         }
+        return tweetResults;
     }
 
     public void connectHBase(){
@@ -138,7 +144,7 @@ public class DAO {
             config.set("hbase.zookeeper.quorum", "ec2-52-91-232-33.compute-1.amazonaws.com");
             config.set("hbase.zookeeper.property.clientPort","2181");
             config.set("hbase.master", "ec2-52-91-232-33.compute-1.amazonaws.com:60000");
-            System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
+            //System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
             HBaseAdmin.checkHBaseAvailable(config);
 
         }

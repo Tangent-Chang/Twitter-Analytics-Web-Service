@@ -9,6 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
 /**
@@ -17,15 +18,19 @@ import java.util.ArrayList;
 
 @WebServlet(urlPatterns={"/q2"})
 public class TextService extends HttpServlet {
-    private ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-    private DAO dao = new DAO("MySQL"); //HBase or MySQL
+
 
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
+        ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
+        DAO dao = new DAO("MySQL"); //HBase or MySQL
+
         String rawQuery = request.getQueryString();
         CharSequence sep1 = "&";
         CharSequence sep2 = "=";
+
+        //System.out.printf("Servlet: received request...\n");
 
         //check request parameters, if lack information, don't process this quest
         if(rawQuery.contains(sep1) || rawQuery.contains(sep2)){
@@ -35,7 +40,7 @@ public class TextService extends HttpServlet {
             String[] timeQuery = query[1].split("=");
             String tweetTime = timeQuery[1];
 
-            System.out.printf("%s\n%s\n", userId, tweetTime);
+            System.out.printf("Servlet: received request %s,%s...\n", userId, tweetTime);
 
             //retrieve data from DB with parameters
             tweetResults = dao.retrieveTweet(userId, tweetTime);
