@@ -33,7 +33,7 @@ public class Reducer {
   }
   
   static Pattern tabPattern = Pattern.compile("\t");
-  static Pattern pipePattern = Pattern.compile("|");
+  static Pattern pipePattern = Pattern.compile("\\|");
   
   /**
    * Reduce.
