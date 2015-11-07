@@ -47,8 +47,8 @@ public class Mapper {
             continue; // filter out malformed tweet
           }
           
-          long userId = tweet.getUser().getId();
-          long tweetId = tweet.getId();
+          String userId = String.format("%20d", tweet.getUser().getId());
+          String tweetId = String.format("%20d", tweet.getId());
   
           String createdAt = timeFilter.parseDate(tweet.getCreatedAt());
           if (createdAt == null) {

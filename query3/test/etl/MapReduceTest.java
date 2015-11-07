@@ -79,9 +79,9 @@ public class MapReduceTest {
   @Test
   public void testGenerateOutput() {
     try {
-      //FileInputStream input = new FileInputStream("slice_test.txt");
+      FileInputStream input = new FileInputStream("slice_test.txt");
       //FileInputStream input = new FileInputStream("slice.txt");sliceM
-      FileInputStream input = new FileInputStream("sliceM.txt");
+      //FileInputStream input = new FileInputStream("sliceM.txt");
       PrintStream output = new PrintStream(new FileOutputStream("mapper_output.txt"));
       System.setIn(input);
       System.setOut(output);
@@ -107,7 +107,7 @@ public class MapReduceTest {
 //    reducer.print();
   }
   
-  //@Test
+  @Test
   public void testIfSameAsReferenceServer() {
 
     StringBuffer oneMapReduceResult = new StringBuffer();

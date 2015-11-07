@@ -44,6 +44,8 @@ public class Reducer {
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, Charset.forName("UTF-8")));
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(System.out, Charset.forName("UTF-8")))) {
       
+    	String lastTweetId = "";
+    	
       while ((line = reader.readLine()) != null) {
         try {
         	String[] parts = tabPattern.split(line, 3);
@@ -54,15 +56,21 @@ public class Reducer {
         	String score = parts[1];
           String text = Escape.decodeBackslashT(parts[2]);
           
+          if (tweetId.equals(lastTweetId)) {
+          	continue;
+          } else {
+          	lastTweetId = tweetId;
+          }
+          
           StringBuilder buffer = new StringBuilder();
           buffer.append(userId)
-          		.append(',')
+          		.append('\t')
           		.append(createdAt)
-          		.append(',')
+          		.append('\t')
           		.append(tweetId)
-          		.append(',')
+          		.append('\t')
           		.append(score)
-          		.append(",")
+          		.append("\t")
           		.append('"')
           		.append(text)
           		.append('"')
