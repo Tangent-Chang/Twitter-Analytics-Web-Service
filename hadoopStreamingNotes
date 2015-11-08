@@ -1,0 +1,8 @@
+A. ETL via Mapreduce:
+hadoop-streaming -files s3://ntnbucket/neha/q3StreamingProgram/q3etl_fat.jar -mapper "java -cp q3etl_fat.jar etl.Mapper" -reducer "java -cp q3etl_fat.jar etl.Reducer" -input s3://cmucc-datasets/twitter/f15/ -output s3://ntnbucket/neha/q3StreamingProgram/output
+
+1. escaped the escaper for 7 records which were failing in the MB file.
+2. Reference server was down so could not validate against the server response
+
+B. Load into MySQL:
+for f in part-000*; do wc -l $f; mv $f QUERY3.csv; mysqlimport -u root -p123456 --local --fields-terminated-by='\t' --fields-optionally-enclosed-by='"' --fields-escaped-by='\' --lines-terminated-by='\n' --default-character-set=utf8mb4 teamproject QUERY3.csv; mv QUERY3.csv $f; done
