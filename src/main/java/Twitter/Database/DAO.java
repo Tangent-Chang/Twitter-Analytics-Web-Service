@@ -19,7 +19,7 @@ import java.util.Calendar;
  * Created by YHWH on 10/23/15.
  */
 public class DAO {
-    private String dbType;
+    private String dbType; //HBase or MySQL
     private Configuration config = null;
     private static HikariDataSource hikari = null;
 
@@ -27,7 +27,9 @@ public class DAO {
     public DAO(String dbType){
         //System.out.printf("DAO: initializing...\n");
         this.dbType = dbType;
-        initialPool();
+        if(this.dbType.equals("MySQL")){
+            initialPool();
+        }
     }
     private static void initialPool(){
         if(hikari == null){
@@ -141,9 +143,9 @@ public class DAO {
         try{
             config = HBaseConfiguration.create();
             config.clear();
-            config.set("hbase.zookeeper.quorum", "ec2-52-91-232-33.compute-1.amazonaws.com");
+            config.set("hbase.zookeeper.quorum", "ec2-52-91-44-225.compute-1.amazonaws.com");
             config.set("hbase.zookeeper.property.clientPort","2181");
-            config.set("hbase.master", "ec2-52-91-232-33.compute-1.amazonaws.com:60000");
+            config.set("hbase.master", "ec2-52-91-44-225.compute-1.amazonaws.com:60000");
             //System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
             HBaseAdmin.checkHBaseAvailable(config);
 
