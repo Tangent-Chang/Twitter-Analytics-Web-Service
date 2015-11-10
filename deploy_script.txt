@@ -1,0 +1,44 @@
+sudo apt-get update
+sudo apt-get install default-jre
+sudo apt-get install default-jdk
+# sudo apt-get install java-1.7.0-openjdk-devel.x86_64
+sudo apt-get install openjdk-7-jdk
+cd /opt
+sudo wget http://mirror.symnds.com/software/Apache/tomcat/tomcat-8/v8.0.28/bin/apache-tomcat-8.0.28.tar.gz
+sudo tar xvf apache-tomcat-8.0.28.tar.gz
+#check unicode
+/opt/apache-tomcat-8.0.28/conf/server.xml
+
+
+# use 80 port, add this into server.xml
+<Connector port="80" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+
+
+# after setup Java and Tomcat
+cd /opt/apache-tomcat-8.0.28/webapps/
+sudo rm -r ROOT
+sudo mkdir ROOT
+cd ~/
+# upload war to server ~/
+sudo mv CloudTeam_war.war /opt/apache-tomcat-8.0.28/webapps/ROOT/
+cd /opt/apache-tomcat-8.0.28/webapps/ROOT
+sudo jar -xvf CloudTeam_war.war
+sudo rm CloudTeam_war.war
+cd /opt/apache-tomcat-8.0.28/
+sudo ./bin/shutdown.sh
+sudo ./bin/startup.sh
+
+
+# create user privileges for server access
+CREATE USER 'client'@'localhost' IDENTIFIED BY '123456';
+GRANT ALL PRIVILEGES ON *.* TO 'client'@'localhost' WITH GRANT OPTION;
+CREATE USER 'client'@'%' IDENTIFIED BY '123456';
+GRANT ALL PRIVILEGES ON *.* TO 'client'@'%' WITH GRANT OPTION;
+
+# open mysql access
+cd /etc/mysql 
+sudo nano my.cnf
+# add this
+bind-address=0.0.0.0			   
