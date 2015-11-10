@@ -24,16 +24,16 @@ public class TextService extends HttpServlet {
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-        DAO dao = new DAO("HBase"); //HBase or MySQL
+        DAO dao = new DAO("MySQL"); //HBase or MySQL
 
-        String rawQuery = request.getQueryString();
+        String rawQuery = request.getQueryString(); //use getParameter will lose timestamp format
         CharSequence sep1 = "&";
         CharSequence sep2 = "=";
 
         //System.out.printf("Servlet: received request...\n");
 
         //check request parameters, if lack information, don't process this quest
-        if(rawQuery.contains(sep1) || rawQuery.contains(sep2)){
+        if(rawQuery.contains(sep1) && rawQuery.contains(sep2)){
             String[] query = rawQuery.split("&");
             String[] userIdQuery = query[0].split("=");
             String userId = userIdQuery[1];
