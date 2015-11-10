@@ -22,7 +22,7 @@ public class SpreadingService extends HttpServlet {
 
         //ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
         HashMap<String, ArrayList<TweetContent>> impactResults = new HashMap<String, ArrayList<TweetContent>>(); //key: Positive, Negative
-        DAO dao = new DAO("MySQL"); //HBase or MySQL
+        DAO dao = new DAO("HBase"); //HBase or MySQL
 
         String userId = request.getParameter("userid");
         String startDate = request.getParameter("start_date");
