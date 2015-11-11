@@ -13,7 +13,9 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.*;
@@ -41,7 +43,7 @@ public class DAO {
             hikari = new HikariDataSource();
             hikari.setMaximumPoolSize(100);
             hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
-            hikari.addDataSourceProperty("serverName", "ec2-54-175-98-31.compute-1.amazonaws.com");
+            hikari.addDataSourceProperty("serverName", "localhost");
             hikari.addDataSourceProperty("port", "3306");
             hikari.addDataSourceProperty("databaseName", "teamproject");
             hikari.addDataSourceProperty("user", "client");
@@ -401,26 +403,31 @@ public class DAO {
         String query = "SELECT ALLVALUE FROM QUERY4 WHERE HASHTAG=?";
 
         try{
-            System.out.printf("DAO: going to connect mysql...\n");
+            //System.out.printf("DAO: going to connect mysql...\n");
             conn = hikari.getConnection();
-            System.out.printf("DAO: got connect mysql...\n");
+            //System.out.printf("DAO: got connect mysql...\n");
 
             stmt = conn.prepareStatement(query);
             stmt.setString(1, hashTag);
-            System.out.printf("DAO: going to execute query...\n");
+            //System.out.printf("DAO: going to execute query...\n");
             ResultSet rs = stmt.executeQuery();
 
             if(rs.next()){
                 String raw = rs.getString(1);
-                System.out.printf("DAO: %s\n", raw);
-                //String[] value = raw.split("\t"); // value[0] == hashtag, value[1] == whole results
+                //System.out.printf("DAO: %s\n", raw);
                 String[] records = raw.split("\n");
+                //String[] records = raw.split("\n2014-");
 
+                //System.out.printf("DAO: qty = %d, records.length = %d\n", qty, records.length);
                 for(int i = 0; i < qty; i++){
                     if(i < records.length){
+                        //tagResults.add(new TweetContent("q4", "2014-"+records[i]));
                         tagResults.add(new TweetContent("q4", records[i]));
+                        //System.out.printf("DAO: %s\n",records[i]);
                     }
+
                 }
+
             }
         }
         catch (SQLException e){

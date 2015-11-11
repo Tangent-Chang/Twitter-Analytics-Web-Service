@@ -59,6 +59,7 @@ public class TweetContent {
         decoded = decoded.replaceAll("\\\\n", "\n");
         decoded = decoded.replaceAll("\\\\\"", "\"");  //double quote
         decoded = decoded.replaceAll("\\\\\'", "\'"); //single quote
+        decoded = decoded.replaceAll("\t\n", "\n");
         //s.append(decoded).append(";");
         //s.append(decoded).append("\n");
         return decoded;
