@@ -32,6 +32,8 @@ sudo ./bin/startup.sh
 
 
 # create user privileges for server access
+mysql -u root -p
+123456
 CREATE USER 'client'@'localhost' IDENTIFIED BY '123456';
 GRANT ALL PRIVILEGES ON *.* TO 'client'@'localhost' WITH GRANT OPTION;
 CREATE USER 'client'@'%' IDENTIFIED BY '123456';

@@ -6,6 +6,7 @@ package Twitter.Service;
 public class TweetContent {
     private String line; //include tweetId, sensitive score, tweetText
     private String q3result; //include create date, impact score, tweet id, tweet text
+    private String q4result;
 
 
     public TweetContent(String line){
@@ -13,6 +14,9 @@ public class TweetContent {
     }
     public TweetContent(String createDate, String impactScore, String tweetId, String tweetText){
         this.q3result = createDate +","+ impactScore +","+ tweetId +","+ tweetText;
+    }
+    public TweetContent(String q4, String value){
+        this.q4result = value;
     }
 
     public String getLine(){
@@ -26,17 +30,15 @@ public class TweetContent {
             line = line.substring(0, line.length()-1);
         }
 
-
         String[] tweets = line.split("\n");
         for (String tweet : tweets) {
+            //String decoded = decode(tweet); //use this line or next four lines
+
             String decoded = tweet.replaceAll("\\\\r", "\r");
             decoded = decoded.replaceAll("\\\\n", "\n");
             decoded = decoded.replaceAll("\\\\\"", "\"");  //double quote
             decoded = decoded.replaceAll("\\\\\'", "\'"); //single quote
-            //s.append(decoded).append(";");
             s.append(decoded).append("\n");
-            //s.append(decoded);
-
         }
 
         return s.toString();
@@ -45,6 +47,10 @@ public class TweetContent {
     public String getQ3Result(){
 
         return decode(q3result);
+    }
+
+    public String getQ4result(){
+        return decode(q4result);
     }
 
     private String decode(String str){
