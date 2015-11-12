@@ -13,7 +13,8 @@ sudo tar xvf apache-tomcat-8.0.28.tar.gz
 # use 80 port, add this into server.xml
 <Connector port="80" protocol="HTTP/1.1"
                connectionTimeout="20000"
-               redirectPort="8443" />
+               redirectPort="8443" 
+			   URIEncoding="UTF-8"/>
 
 
 # after setup Java and Tomcat
@@ -43,4 +44,4 @@ GRANT ALL PRIVILEGES ON *.* TO 'client'@'%' WITH GRANT OPTION;
 cd /etc/mysql 
 sudo nano my.cnf
 # add this
-bind-address=0.0.0.0			   
+bind-address=0.0.0.0		

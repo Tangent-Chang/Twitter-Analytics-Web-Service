@@ -18,13 +18,15 @@ import java.util.ArrayList;
 public class HashtagService extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String hashtag = request.getParameter("hashtag");
-        String tweetQty = request.getParameter("n");
 
         DAO dao = new DAO("MySQL"); //HBase or MySQL
         ArrayList<TweetContent> tagResults = null;
 
-        tagResults = dao.retrieveHashtagResults(hashtag, tweetQty);
+        request.setCharacterEncoding("UTF-8");
+        String hashTag = request.getParameter("hashtag");
+        String tweetQty = request.getParameter("n");
+
+        tagResults = dao.retrieveHashtagResults(hashTag, tweetQty);
 
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");

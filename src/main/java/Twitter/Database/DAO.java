@@ -13,13 +13,9 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.*;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -32,12 +28,16 @@ public class DAO {
 
     //setup which DB type this DAO object is going to deal with
     public DAO(String dbType){
-        //System.out.printf("DAO: initializing...\n");
         this.dbType = dbType;
         if(this.dbType.equals("MySQL")){
             initialPool();
         }
     }
+
+    /**
+     * DB connector
+     */
+
     private static void initialPool(){
         if(hikari == null){
             hikari = new HikariDataSource();
@@ -48,33 +48,82 @@ public class DAO {
             hikari.addDataSourceProperty("databaseName", "teamproject");
             hikari.addDataSourceProperty("user", "client");
             hikari.addDataSourceProperty("password", "123456");
+            hikari.addDataSourceProperty("useUnicode", "true");
+            hikari.addDataSourceProperty("characterEncoding", "utf8");
+
         }
     }
+    //private HConnection connectHBase(){
+    private void connectHBase(){
+        //HConnection  connection = null;
+        try{
+            config = HBaseConfiguration.create();
+            config.clear();
+            config.set("hbase.zookeeper.quorum", "ec2-54-172-134-188.compute-1.amazonaws.com");
+            config.set("hbase.zookeeper.property.clientPort","2181");
+            config.set("hbase.master", "ec2-54-172-134-188.compute-1.amazonaws.com:60000");
+            //System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
+            HBaseAdmin.checkHBaseAvailable(config);
+            //Configuration newConfig = new Configuration(originalConf);
+            //connection = HConnectionManager.getConnection(config);
+        }
+        catch(IOException e){
+            e.printStackTrace();
+        }
+        //return connection;
+    }
 
-    //call DB proccessor to retrieve data from DB
+    /**
+     * Service handler, call related DB processor
+     */
     public ArrayList<TweetContent> retrieveTweet(String userId, String tweetTime){
         String separator = "|";
         ArrayList<TweetContent> tweetResults = null;
 
         if(dbType.equals("HBase")){
             String rowKey = "\"" + pad(userId) + separator + tweetTime + "\"";
-            //System.out.printf("DAO: rowkey = %s\n", rowKey);
-            //System.out.printf("DAO: calling HBase...\n");
             tweetResults = retrieveDataFromHBase(rowKey);
         }
         else if(dbType.equals("MySQL")){
             String idWithTime = pad(userId) + separator + tweetTime;
-            //System.out.printf("DAO: idWithTime = %s\n", idWithTime);
-            //System.out.printf("DAO: calling MySQL...\n");
             tweetResults = retrieveDataFromMySql(idWithTime);
         }
         return tweetResults;
     }
 
+    public HashMap<String, ArrayList<TweetContent>> retrieveImpactTweet(String startDate, String endDate, String id, String qty){
+        HashMap<String, ArrayList<TweetContent>> impactResults = null;
+        BigDecimal userId = new BigDecimal(id);
+        int tweetQty = Integer.parseInt(qty);
+
+        if(dbType.equals("MySQL")){
+            impactResults = retrieveImpactFromMySql(startDate, endDate, userId, tweetQty);
+        }
+        else if(dbType.equals("HBase")){
+            impactResults = retrieveImpactFromHBase(startDate, endDate, id, tweetQty);
+        }
+
+        return impactResults;
+    }
+
+    public ArrayList<TweetContent> retrieveHashtagResults(String hashTag, String qty){
+        ArrayList<TweetContent> tagResults = null;
+        int quantity = Integer.parseInt(qty);
+
+        if(dbType.equals("MySQL")){
+            tagResults = retrieveHashtagDataFromMysql(hashTag, quantity);
+        }
+        else if(dbType.equals("HBase")){
+            tagResults = retrieveHashtagDataFromHBase(hashTag, quantity);
+        }
+
+        return tagResults;
+    }
+
+    /**
+     * MySQL
+     */
     private ArrayList<TweetContent> retrieveDataFromMySql(String idWithTime){
-
-        //System.out.printf("DAO: retrieving data...\n");
-
         Connection conn = null;
         PreparedStatement stmt = null;
         ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
@@ -87,12 +136,9 @@ public class DAO {
             stmt = conn.prepareStatement(query);
             stmt.setString(1, idWithTime);
 
-            //System.out.printf("DAO: executing query...\n");
             ResultSet rs = stmt.executeQuery();
-            //System.out.printf("DAO: get result...\n");
             while(rs.next()){
                 TweetContent tweet = new TweetContent(rs.getString(1));
-                //System.out.printf("DAO: data retrieved: %s\n", tweet.getLine());
                 tweetResults.add(tweet);
             }
         }
@@ -119,75 +165,7 @@ public class DAO {
         }
         return tweetResults;
     }
-    private ArrayList<TweetContent> retrieveDataFromHBase(String rowKey){
 
-        HConnection connection = connectHBase();
-        //connectHBase();
-
-        ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-
-        //System.out.printf("DAO: retrieving data...\n");
-
-        try{
-            HTable table = new HTable(config, "teamproject");
-            /*HTableInterface table = connection.getTable("teamproject");
-            // use the table as needed, for a single operation and a single thread
-            table.close();
-            connection.close();*/
-
-            Get g = new Get(rowKey.getBytes());
-            Result rs = table.get(g);
-            //System.out.printf("DAO: get result...\n");
-
-            byte[] value = rs.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("value"));
-            String valueStr = Bytes.toString(value);
-            //System.out.printf("DAO: result = %s\n", valueStr);
-
-            tweetResults.add(new TweetContent(valueStr));
-
-            // Use the connection to your hearts' delight and then when done...
-            HConnectionManager.deleteConnection(config, true);
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
-        return tweetResults;
-    }
-
-    private HConnection connectHBase(){
-    //private void connectHBase(){
-        HConnection  connection = null;
-        try{
-            config = HBaseConfiguration.create();
-            config.clear();
-            config.set("hbase.zookeeper.quorum", "ec2-54-175-139-164.compute-1.amazonaws.com");
-            config.set("hbase.zookeeper.property.clientPort","2181");
-            config.set("hbase.master", "ec2-54-175-139-164.compute-1.amazonaws.com:60000");
-            //System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
-            HBaseAdmin.checkHBaseAvailable(config);
-            //Configuration newConfig = new Configuration(originalConf);
-            connection = HConnectionManager.getConnection(config);
-        }
-        catch(IOException e){
-            e.printStackTrace();
-        }
-        return connection;
-    }
-
-    public HashMap<String, ArrayList<TweetContent>> retrieveImpactTweet(String startDate, String endDate, String id, String qty){
-        HashMap<String, ArrayList<TweetContent>> impactResutls = null;
-        BigDecimal userId = new BigDecimal(id);
-        int tweetQty = Integer.parseInt(qty);
-
-        if(dbType.equals("MySQL")){
-            impactResutls = retrieveImpactFromMySql(startDate, endDate, userId, tweetQty);
-        }
-        else if(dbType.equals("HBase")){
-            impactResutls = retrieveImpactFromHBase(startDate, endDate, id, tweetQty);
-        }
-
-        return impactResutls;
-    }
 
     private HashMap<String, ArrayList<TweetContent>> retrieveImpactFromMySql(String startDate, String endDate, BigDecimal userId, int tweetQty){
         HashMap<String, ArrayList<TweetContent>> impactResults = new HashMap<String, ArrayList<TweetContent>>();
@@ -259,6 +237,98 @@ public class DAO {
 
         return impactResults;
     }
+
+    private ArrayList<TweetContent> retrieveHashtagDataFromMysql(String hashTag, int qty){
+        ArrayList<TweetContent> tagResults = new ArrayList<TweetContent>();
+
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        String query = "SELECT ALLVALUE FROM QUERY4 WHERE HASHTAG=?";
+
+        try{
+            conn = hikari.getConnection();
+
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, hashTag);
+            ResultSet rs = stmt.executeQuery();
+
+            if(rs.next()){
+                String raw = rs.getString(1);
+                raw = raw.replaceAll("\t\n", "\n"); //reducer would add \t automatically if there is \n in the end of string
+                String[] preProcessRecords = raw.split("\n");
+
+                String[] records = mergeExtraRecords(preProcessRecords);
+
+                for(int i = 0; i < qty; i++){
+                    if(i < records.length){
+                        tagResults.add(new TweetContent("q4", records[i]));
+                    }
+                }
+            }
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                try{
+                    conn.close();
+                }
+                catch(SQLException e){
+                    e.printStackTrace();
+                }
+            }
+            if(stmt != null){
+                try{
+                    stmt.close();
+                }
+                catch (SQLException e){
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return tagResults;
+    }
+
+    /**
+     * HBase
+     */
+    private ArrayList<TweetContent> retrieveDataFromHBase(String rowKey){
+
+        //HConnection connection = connectHBase();
+        connectHBase();
+
+        ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
+
+        //System.out.printf("DAO: retrieving data...\n");
+
+        try{
+            HTable table = new HTable(config, "teamproject");
+            /*HTableInterface table = connection.getTable("teamproject");
+            // use the table as needed, for a single operation and a single thread
+            table.close();
+            connection.close();*/
+
+            Get g = new Get(rowKey.getBytes());
+            Result rs = table.get(g);
+            //System.out.printf("DAO: get result...\n");
+
+            byte[] value = rs.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("value"));
+            String valueStr = Bytes.toString(value);
+            //System.out.printf("DAO: result = %s\n", valueStr);
+
+            tweetResults.add(new TweetContent(valueStr));
+
+            // Use the connection to your hearts' delight and then when done...
+            //HConnectionManager.deleteConnection(config, true);
+        }
+        catch(IOException e){
+            e.printStackTrace();
+        }
+        return tweetResults;
+    }
+
     private HashMap<String, ArrayList<TweetContent>> retrieveImpactFromHBase(String startDate, String endDate, String userId, int tweetQty ){
         connectHBase();
         HashMap<String, ArrayList<TweetContent>> impactResults = new HashMap<String, ArrayList<TweetContent>>();
@@ -273,27 +343,32 @@ public class DAO {
 
             SingleColumnValueFilter scvf1 = new SingleColumnValueFilter(Bytes.toBytes("tweets"), Bytes.toBytes("user_id"), CompareFilter.CompareOp.EQUAL, new BinaryComparator(userId.getBytes()));
             SingleColumnValueFilter scvf2 = new SingleColumnValueFilter(Bytes.toBytes("tweets"), Bytes.toBytes("created_at"), CompareFilter.CompareOp.GREATER_OR_EQUAL, new BinaryComparator(startDate.getBytes()));
-            SingleColumnValueFilter scvf3 = new SingleColumnValueFilter(Bytes.toBytes("tweets"), Bytes.toBytes("created_at"), CompareFilter.CompareOp.GREATER_OR_EQUAL, new BinaryComparator(endDate.getBytes()));
+            SingleColumnValueFilter scvf3 = new SingleColumnValueFilter(Bytes.toBytes("tweets"), Bytes.toBytes("created_at"), CompareFilter.CompareOp.LESS_OR_EQUAL, new BinaryComparator(endDate.getBytes()));
 
             FilterList fl = new FilterList(FilterList.Operator.MUST_PASS_ALL);
             fl.addFilter(scvf1);
             fl.addFilter(scvf2);
             fl.addFilter(scvf3);
             s.setFilter(fl);
+            //System.out.printf("DAO: going to execute query...\n");
             ResultScanner rs = table.getScanner(s);
+            //System.out.printf("DAO: got data...\n");
 
             int positiveCount = 0;
             int negativeCount = 0;
             ArrayList<String[]> unsortPosRecords = new ArrayList<String[]>();
             ArrayList<String[]> unsortNegRecords = new ArrayList<String[]>();
             for (Result r : rs){
+                //System.out.print("DAO: inside for each...");
+                //System.out.print(r);
                 if(r != null){
-
+                    //System.out.print("DAO: inside if not null...");
                     //System.out.printf("DAO: one result...\n", r);
                     //byte[] value = r.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("follower"));
                     //String follower_id = Bytes.toString(value);
                     //followers_id.add(follower_id);
                     //System.out.printf("DAO: %s\n", valueStr);
+                    //System.out.printf("DAO: one result = %s\n", r);
 
                     byte[] value1 = r.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("created_at"));
                     byte[] value2 = r.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("score"));
@@ -305,6 +380,7 @@ public class DAO {
                     //String score = Bytes.toString(value2);
                     String tweetId = Bytes.toString(value3);
                     String text = Bytes.toString(value4);
+                    System.out.printf("DAO: format one result = %s, %d, %s, %s\n", createdAt, score, tweetId, text);
 
                     if(score > 0){
                     //if(score > 0 && positiveCount < tweetQty){
@@ -342,7 +418,6 @@ public class DAO {
                     negativeResults.add(new TweetContent(each[0], each[1], each[2], each[3]));
                     negativeCount++;
                 }
-
             }
 
             impactResults.put("Positive", positiveResults);
@@ -356,17 +431,83 @@ public class DAO {
         }
         return impactResults;
     }
-    private ArrayList<String[]> sortImpactResult(ArrayList<String[]> records){
-        //ArrayList<TweetContent> results = new ArrayList<TweetContent>();
 
-        /*Arrays.sort(data, new Comparator<String[]>() {
-            @Override
-            public int compare(final String[] entry1, final String[] entry2) {
-                final String time1 = entry1[0];
-                final String time2 = entry2[0];
-                return time1.compareTo(time2);
+    private ArrayList<TweetContent> retrieveHashtagDataFromHBase(String hashTag, int qty){
+        ArrayList<TweetContent> tagResults = null;
+
+        connectHBase();
+
+        try{
+            HTable table = new HTable(config, "QUERY4");
+
+            Get g = new Get(hashTag.getBytes());
+            Result rs = table.get(g);
+
+            if(rs!=null){
+                byte[] value = rs.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("allvalue"));
+                String raw = Bytes.toString(value);
+                raw = raw.replaceAll("\t\n", "\n"); //reducer would add \t automatically if there is \n in the end of string
+                String[] preProcessRecords = raw.split("\n");
+
+                String[] records = mergeExtraRecords(preProcessRecords);
+
+                for(int i = 0; i < qty; i++){
+                    if(i < records.length){
+                        tagResults.add(new TweetContent("q4", records[i]));
+                    }
+                }
             }
-        });*/
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+
+        return tagResults;
+    }
+
+    /**
+     * Helper Function
+     */
+    //9223372036854775807 is Long.MAX_VALUE, length is 19. negative may be 20
+    private String pad(String userId){
+        final Integer MAX_LENGTH = 20;
+        Integer length = userId.length();
+
+        if (length == MAX_LENGTH) {
+            return userId;
+        }
+
+        return String.format("%20s", userId);
+    }
+
+    private String[] mergeExtraRecords(String[] records){
+        ArrayList<String> correctRecords = new ArrayList<String>();
+        String bufferStr = "";
+
+        for(int i = 0; i < records.length; i++){
+            if(records.length > 5 && records[i].substring(0, 5).equals("2014-")){
+                // means this line is a new record, so we know the bufferStr is end, and can be put into formal list now
+                // then treat this line as bufferStr
+                if(!bufferStr.isEmpty()){
+                    correctRecords.add(bufferStr);
+                    bufferStr = "";
+                }
+                bufferStr = records[i];
+            }
+            else{
+                // means this line is part of old record, should be appended into bufferStr
+                bufferStr = bufferStr +"\n"+ records[i];
+            }
+        }
+        // in case there is only one line
+        if(!bufferStr.isEmpty()){
+            correctRecords.add(bufferStr);
+        }
+
+        return correctRecords.toArray(new String[correctRecords.size()]);
+    }
+
+    private ArrayList<String[]> sortImpactResult(ArrayList<String[]> records){
 
         // didn't deal with plus and minus sign
         Collections.sort(records, new Comparator<String[]>() {
@@ -380,111 +521,5 @@ public class DAO {
         });
 
         return records;
-    }
-
-    public ArrayList<TweetContent> retrieveHashtagResults(String hashTag, String qty){
-        ArrayList<TweetContent> tagResults = null;
-        int quantity = Integer.parseInt(qty);
-        if(dbType.equals("MySQL")){
-            System.out.printf("DAO: going to retrieveHashtagDataFromMysql...\n");
-            tagResults = retrieveHashtagDataFromMysql(hashTag, quantity);
-        }
-        else if(dbType.equals("HBase")){
-            tagResults = retrieveHashtagDataFromHBase(hashTag, qty);
-        }
-
-        return tagResults;
-    }
-    private ArrayList<TweetContent> retrieveHashtagDataFromMysql(String hashTag, int qty){
-        ArrayList<TweetContent> tagResults = new ArrayList<TweetContent>();
-
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        String query = "SELECT ALLVALUE FROM QUERY4 WHERE HASHTAG=?";
-
-        try{
-            //System.out.printf("DAO: going to connect mysql...\n");
-            conn = hikari.getConnection();
-            //System.out.printf("DAO: got connect mysql...\n");
-
-            stmt = conn.prepareStatement(query);
-            stmt.setString(1, hashTag);
-            //System.out.printf("DAO: going to execute query...\n");
-            ResultSet rs = stmt.executeQuery();
-
-            if(rs.next()){
-                String raw = rs.getString(1);
-                //System.out.printf("DAO: %s\n", raw);
-                String[] records = raw.split("\n");
-                //String[] records = raw.split("\n2014-");
-
-                //System.out.printf("DAO: qty = %d, records.length = %d\n", qty, records.length);
-                for(int i = 0; i < qty; i++){
-                    if(i < records.length){
-                        //tagResults.add(new TweetContent("q4", "2014-"+records[i]));
-                        tagResults.add(new TweetContent("q4", records[i]));
-                        //System.out.printf("DAO: %s\n",records[i]);
-                    }
-
-                }
-
-            }
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        finally {
-            if(conn != null){
-                try{
-                    conn.close();
-                }
-                catch(SQLException e){
-                    e.printStackTrace();
-                }
-            }
-            if(stmt != null){
-                try{
-                    stmt.close();
-                }
-                catch (SQLException e){
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return tagResults;
-    }
-    private ArrayList<TweetContent> retrieveHashtagDataFromHBase(String hashTag, String qty){
-        ArrayList<TweetContent> tagResults = null;
-
-        connectHBase();
-
-        try{
-            HTable table = new HTable(config, "QUERY3");
-
-            Scan s = new Scan();
-
-            SingleColumnValueFilter scvf = new SingleColumnValueFilter(Bytes.toBytes("tweets"), Bytes.toBytes("hashtag"), CompareFilter.CompareOp.EQUAL, new BinaryComparator(hashTag.getBytes()));
-            s.setFilter(scvf);
-            ResultScanner rs = table.getScanner(s);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-
-
-        return tagResults;
-    }
-
-    //9223372036854775807 is Long.MAX_VALUE, length is 19. negative may be 20
-    private String pad(String userId){
-        final Integer MAX_LENGTH = 20;
-        Integer length = userId.length();
-
-        if (length == MAX_LENGTH) {
-            return userId;
-        }
-
-        return String.format("%20s", userId);
     }
 }
