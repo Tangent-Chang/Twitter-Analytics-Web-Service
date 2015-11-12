@@ -1,0 +1,46 @@
+#import csv to HBase
+#should use /mnt, or space is not enough
+mkdir Phase1
+cd Phase1/
+aws s3 cp s3://ntnbucket/nanwang/201510272309/output/ . --recursive 
+hadoop fs -mkdir /tweet_data
+hadoop fs -put part-* /tweet_data
+hadoop fs -ls /tweet_data
+hbase shell
+create 'teamproject', {NAME => 'tweets'}
+exit
+hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.bulk.output=output1 -Dimporttsv.columns=HBASE_ROW_KEY,tweets:value teamproject /tweet_data
+hbase org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles output1 teamproject
+
+# query 3 HBaseschema
+# should use /mnt, or space is not enough
+mkdir Phase2
+cd Phase2/
+# get csv from s3
+hadoop fs -mkdir /tweet_data
+hadoop fs -put part-* /tweet_data
+hadoop fs -ls /tweet_data
+hbase shell
+create 'QUERY3', {NAME => 'tweets'}
+hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.bulk.output=output1 -Dimporttsv.columns=tweets:user_id,tweets:created_at,HBASE_ROW_KEY,tweets:score,tweets:text QUERY3 /tweet_data
+hbase org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles output1 teamproject
+
+# query 4 HBaseschema
+# should use /mnt, or space is not enough
+mkdir query4
+cd query4/
+# get csv from s3
+# aws s3 cp s3://ntnbucket/nanwang/query4/ETL_output_3/ . --recursive 
+hadoop fs -mkdir /tweet_data
+hadoop fs -put part-* /tweet_data
+hadoop fs -ls /tweet_data
+hbase shell
+create 'QUERY4', {NAME => 'tweets'}
+hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.bulk.output=output1 -Dimporttsv.columns=HBASE_ROW_KEY,tweets:allvalue QUERY3 /tweet_data
+hbase org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles output1 teamproject
+
+#restore q2 hbase
+aws emr restore-from-hbase-backup --cluster-id j-RBSSDU6CBODF --dir s3://ntnbucket/HBase_backups/j-23D173HOPHZRS --backup-version 20151106T235542Z
+
+#restore q3 hbase
+aws emr restore-from-hbase-backup --cluster-id j-RBSSDU6CBODF --dir s3://ntnbucket/neha/q3HBaseBackup/j-2IPX28CY91W96 --backup-version 20151111T115314Z

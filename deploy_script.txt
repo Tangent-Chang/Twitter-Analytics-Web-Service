@@ -21,10 +21,9 @@ sudo tar xvf apache-tomcat-8.0.28.tar.gz
 cd /opt/apache-tomcat-8.0.28/webapps/
 sudo rm -r ROOT
 sudo mkdir ROOT
-cd ~/
+cd ROOT
 # upload war to server ~/
-sudo mv CloudTeam_war.war /opt/apache-tomcat-8.0.28/webapps/ROOT/
-cd /opt/apache-tomcat-8.0.28/webapps/ROOT
+sudo mv ~/CloudTeam_war.war ./
 sudo jar -xvf CloudTeam_war.war
 sudo rm CloudTeam_war.war
 cd /opt/apache-tomcat-8.0.28/
