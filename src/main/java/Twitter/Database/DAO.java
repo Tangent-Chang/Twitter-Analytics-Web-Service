@@ -59,9 +59,9 @@ public class DAO {
         try{
             config = HBaseConfiguration.create();
             config.clear();
-            config.set("hbase.zookeeper.quorum", "ec2-54-172-134-188.compute-1.amazonaws.com");
+            config.set("hbase.zookeeper.quorum", "ec2-54-86-68-59.compute-1.amazonaws.com");
             config.set("hbase.zookeeper.property.clientPort","2181");
-            config.set("hbase.master", "ec2-54-172-134-188.compute-1.amazonaws.com:60000");
+            config.set("hbase.master", "ec2-54-86-68-59.compute-1.amazonaws.com:60000");
             //System.out.printf("DAO: %d, connecting HBase...\n", Thread.currentThread().getId());
             HBaseAdmin.checkHBaseAvailable(config);
             //Configuration newConfig = new Configuration(originalConf);

@@ -19,7 +19,7 @@ public class HashtagService extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        DAO dao = new DAO("MySQL"); //HBase or MySQL
+        DAO dao = new DAO("HBase"); //HBase or MySQL
         ArrayList<TweetContent> tagResults = null;
 
         request.setCharacterEncoding("UTF-8");
