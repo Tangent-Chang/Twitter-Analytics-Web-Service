@@ -120,6 +120,20 @@ public class DAO {
         return tagResults;
     }
 
+    public String retrieveCount(String useridMin, String useridMax){
+        String count = "0";
+
+        if(dbType.equals("MySQL")){
+            int result = retrieveCountFromMysql(useridMin, useridMax);
+            count = String.valueOf(result);
+        }
+        else if(dbType.equals("HBase")){
+            int result = retrieveCountFromHBase(useridMin, useridMax);
+            count = String.valueOf(result);
+        }
+        return count;
+    }
+
     /**
      * MySQL
      */
@@ -289,6 +303,54 @@ public class DAO {
         }
 
         return tagResults;
+    }
+
+    private int retrieveCountFromMysql(String useridMin, String useridMax){
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        String query = "SELECT prevCount, count FROM QUERY5 WHERE userId=? AND userId=?";
+
+        int count = 0;
+        try{
+            conn = hikari.getConnection();
+
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, useridMin);
+            stmt.setString(2, useridMax);
+            ResultSet rs = stmt.executeQuery();
+
+            int[] counts = new int[4]; //minPrev, minSelf, maxPrev, maxSelf
+            int i = 0;
+            while(rs.next()){
+                counts[i] = rs.getInt(1);    //minPrev or maxPrev
+                counts[i+1] = rs.getInt(2);  //minSelf or maxSelf
+                i+=2;
+            }
+
+            count = counts[2] - counts[0] + counts[3];
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                try{
+                    conn.close();
+                }
+                catch(SQLException e){
+                    e.printStackTrace();
+                }
+            }
+            if(stmt != null){
+                try{
+                    stmt.close();
+                }
+                catch (SQLException e){
+                    e.printStackTrace();
+                }
+            }
+        }
+        return count;
     }
 
     /**
@@ -463,6 +525,10 @@ public class DAO {
         }
 
         return tagResults;
+    }
+
+    private int retrieveCountFromHBase(String useridMin, String useridMax){
+        return 0;
     }
 
     /**
