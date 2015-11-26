@@ -2,6 +2,7 @@ package Twitter.Service;
 
 import Twitter.Database.DAO;
 
+import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -14,10 +15,10 @@ import java.util.Hashtable;
 /**
  * Created by YHWH on 11/19/15.
  */
-@WebServlet(urlPatterns={"/q6"})
+@WebServlet(asyncSupported = true, urlPatterns={"/q6"})
 
 public class TaggerService extends HttpServlet {
-    Hashtable<String, Transaction> transactions = new Hashtable<String, Transaction>();
+    static Hashtable<String, Transaction> transactions = new Hashtable<String, Transaction>();
     static Hashtable<String, String> data = new Hashtable<String, String>(); //<tweetid, content>
 
 
@@ -34,23 +35,24 @@ public class TaggerService extends HttpServlet {
         String seq = request.getParameter("seq");
         String tweetId = request.getParameter("tweetid");
         String tag = request.getParameter("tag");
-        System.out.printf("Service: opt = %s, tid = %s, seq = %s, tweetId = %s, tag = %s \n", opt, tid, seq, tweetId, tag);
-
-        response.setContentType("text/plain");
-        response.setCharacterEncoding("UTF-8");
-        OutputStream out = response.getOutputStream();
-        //print out multiple results
-        //out.write("TRINITY,9807-6280-2282\n".getBytes());
+        AsyncContext async = request.startAsync();
 
         if(transactions.containsKey(tid)){
-            transactions.get(tid).handleReq(seq, opt, tweetId, tag);
+            transactions.get(tid).handleReq(seq, opt, tweetId, tag, async);
         }
         else{
-            Transaction one = new Transaction(tid, out);
-            one.handleReq(seq, opt, tweetId, tag);
+            Transaction one = new Transaction(tid);
             transactions.put(tid, one);
             Thread t = new Thread(one);
+            one.handleReq(seq, opt, tweetId, tag, async);
             t.start();
+            try{
+                Thread.sleep(1000*10);
+            }
+            catch(InterruptedException e){
+                e.printStackTrace();
+            }
+
         }
         //remember to write hashtable data to database
         //remember to clear used tid

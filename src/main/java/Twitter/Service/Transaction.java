@@ -1,12 +1,10 @@
 package Twitter.Service;
 
-import javax.servlet.ServletException;
+import org.apache.hadoop.hbase.util.Bytes;
+
+import javax.servlet.AsyncContext;
+import javax.servlet.ServletResponse;
 import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.io.OutputStream;
-import java.util.AbstractMap;
-import java.util.Comparator;
-import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -15,51 +13,33 @@ import java.util.concurrent.PriorityBlockingQueue;
 public class Transaction implements Runnable{
     private boolean state = false; //true = start, false = not start or end.
     private String tid = "";
-    //private String[][] operations = new String[5][3];
     private PriorityBlockingQueue<Operation> operations = null;
+    private int next = 0;
 
-    private OutputStream out = null;
-
-    public Transaction(String tid, OutputStream out){
+    public Transaction(String tid){
         this.tid = tid;
-        this.out = out;
-
         operations = new PriorityBlockingQueue<Operation>();
     }
 
-    public void handleReq(String sequence, String opt, String tweetId, String tag){
-        System.out.printf("Transaction: opt = %s, seq = %s, tweetId = %s, tag = %s \n", opt, sequence, tweetId, tag);
-
+    public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async){
         try{
             if(opt.equals("s")){
                 state = true;
+                next = 1;
+                writeResp("0", async.getResponse());
             }
             else if(opt.equals("e")){
                 state = false;
-                out.close();
+                writeResp("0", async.getResponse());
             }
             else{ //opt = a or r
-                Operation one = new Operation(sequence, opt, tweetId, tag);
-                operations.offer(one);
-
-                /*int seq = Integer.parseInt(sequence)-1; //sequence is 1~5
-                if(operations[seq]==null){       //no duplicated seq
-                    operations[seq][0] = opt;
-                    operations[seq][1] = tweetId;
-                    if(tag!=null){
-                        operations[seq][2] = tag;
-                    }
-                    else{
-                        operations[seq][2] = "";
-                    }
-                }*/
-
+                if(operations.size() < 1 || operations.peek().getSeq() != Integer.parseInt(sequence)){
+                    Operation one = new Operation(sequence, opt, tweetId, tag, async);
+                    operations.offer(one);
+                }
             }
         }
         catch(NullPointerException e){
-            e.printStackTrace();
-        }
-        catch(IOException e){
             e.printStackTrace();
         }
     }
@@ -67,40 +47,32 @@ public class Transaction implements Runnable{
 
     public void run() {
         while(state){
-            executeReq();
+            if(operations.size() > 0 && next == operations.peek().getSeq()){
+                executeReq();
+                next++;
+            }
         }
     }
 
     public void executeReq(){
         try{
-            for(int i = 0; i < operations.length; i++){ //execute request based on sequence
-                while(operations[i][0]==null){  //if that request is empty, should wait for it
-                    wait(1000);
-                }
-                // execute request
-                String message = "";
-                String opt = operations[i][0];
-                String tweetId = operations[i][1];
-                String tag = operations[i][2];
+            String message = "";
+            Operation one = operations.take();
 
-                if(opt.equals("a")){
-                    // write data to hashtable
-                    StringBuffer s = new StringBuffer();
-                    s.append(TaggerService.data.get(tweetId));
-                    s.append(tag);
-                    TaggerService.data.put(tweetId, s.toString());
-                    message = tag;
-                }
-                else if(opt.equals("r")){
-                    // read data from hashtable
-                    message = TaggerService.data.get(tweetId);
-                }
-
-                writeResp(message);
+            if(one.getOpt().equals("a")){
+                // write data to hashtable
+                StringBuffer s = new StringBuffer();
+                s.append(TaggerService.data.get(one.getTweetId()));
+                s.append(one.getTag());
+                TaggerService.data.put(one.getTweetId(), s.toString());
+                message = one.getTag();
             }
-        }
-        catch(IOException e){
-            e.printStackTrace();
+            else if(one.getOpt().equals("r")){
+                // read data from hashtable
+                message = TaggerService.data.get(one.getTweetId());
+            }
+            writeResp(message, one.getResp());
+            one.completeAsync();
         }
         catch(InterruptedException e){
             e.printStackTrace();
@@ -110,9 +82,21 @@ public class Transaction implements Runnable{
         }
     }
 
-    public void writeResp(String message)throws IOException {
-        out.write("TRINITY,9807-6280-2282\n".getBytes());
-        out.write(message.getBytes());
+    public void writeResp(String message, ServletResponse resp) {
+        try{
+            resp.setContentType("text/plain");
+            resp.setCharacterEncoding("UTF-8");
+            resp.getOutputStream().write(Bytes.toBytes("TRINITY,9807-6280-2282\n"));
+            resp.getOutputStream().write(Bytes.toBytes(message+"\n"));
+            resp.getOutputStream().close();
+        }
+        catch(IOException e){
+            e.printStackTrace();
+        }
+        catch(NullPointerException e){
+            e.printStackTrace();
+        }
+
     }
 
     private class Operation implements Comparable<Operation>{
@@ -120,12 +104,16 @@ public class Transaction implements Runnable{
         private String opt;
         private String tweetId;
         private String tag;
+        private ServletResponse resp;
+        private AsyncContext async;
 
-        public Operation(String sequence, String opt, String tweetId, String tag){
+        public Operation(String sequence, String opt, String tweetId, String tag, AsyncContext async){
             this.seq = Integer.parseInt(sequence);
             this.opt = opt;
             this.tweetId = tweetId;
             this.tag = tag;
+            this.async = async;
+            this.resp = async.getResponse();
         }
 
         public int getSeq(){
@@ -140,9 +128,16 @@ public class Transaction implements Runnable{
         public String getTag(){
             return this.tag;
         }
+        public ServletResponse getResp(){
+            return this.resp;
+        }
 
         public int compareTo(Operation o) {
             return this.seq - o.getSeq();
+        }
+
+        public void completeAsync(){
+            this.async.complete();
         }
 
 
