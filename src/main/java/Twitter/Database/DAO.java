@@ -15,6 +15,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.*;
 import java.util.*;
 
@@ -25,12 +26,16 @@ public class DAO {
     private String dbType; //HBase or MySQL
     private Configuration config = null;
     private static HikariDataSource hikari = null;
+    private static Hashtable<BigInteger, String> wholeCountData = null;
 
     //setup which DB type this DAO object is going to deal with
     public DAO(String dbType){
         this.dbType = dbType;
         if(this.dbType.equals("MySQL")){
             initialPool();
+        }
+        if(wholeCountData == null){
+            wholeCountData = new Hashtable<BigInteger, String>();
         }
     }
 
@@ -123,8 +128,13 @@ public class DAO {
     public String retrieveCount(String useridMin, String useridMax){
         String count = "0";
 
+        if(wholeCountData.size()<1){
+            loadAllCountData();
+        }
+
         if(dbType.equals("MySQL")){
-            int result = retrieveCountFromMysql(useridMin, useridMax);
+            //int result = retrieveCountFromMysql(useridMin, useridMax);
+            int result = retrieveCountFromMemory(useridMin, useridMax);
             count = String.valueOf(result);
         }
         else if(dbType.equals("HBase")){
@@ -133,6 +143,89 @@ public class DAO {
         }
         return count;
     }
+
+    /**
+     * Memory
+     */
+    private void loadAllCountData(){
+
+        Connection conn = null;
+        Statement stmt = null;
+        String query = "SELECT * FROM QUERY5; ";
+
+        //int count = 0;
+        try{
+            conn = hikari.getConnection();
+            stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+
+            while(rs.next()){
+                String userId = rs.getString(1);
+                String prevCount = rs.getString(2);
+                String count = rs.getString(3);
+                wholeCountData.put(new BigInteger(userId), prevCount +":"+ count);
+            }
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                try{
+                    conn.close();
+                }
+                catch(SQLException e){
+                    e.printStackTrace();
+                }
+            }
+            if(stmt != null){
+                try{
+                    stmt.close();
+                }
+                catch (SQLException e){
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private int retrieveCountFromMemory(String useridMin, String useridMax){
+        BigInteger minUserId = new BigInteger(useridMin);
+        BigInteger maxUserId = new BigInteger(useridMax);
+        int count = 0;
+        int[] minData = new int[2];
+        int[] maxData = new int[2];
+
+        while(minUserId.compareTo(maxUserId) < 0){
+            if(wholeCountData.containsKey(minUserId)){
+                String raw = wholeCountData.get(minUserId);
+                String[] data = raw.split(":");
+                minData[0] = Integer.parseInt(data[0]); //prevCount
+                minData[1] = Integer.parseInt(data[1]); //selfCount
+                break;
+            }
+            else{
+                minUserId = minUserId.add(BigInteger.ONE);
+            }
+        }
+
+        while(maxUserId.compareTo(minUserId) > 0){
+            if(wholeCountData.containsKey(maxUserId)){
+                String raw = wholeCountData.get(maxUserId);
+                String[] data = raw.split(":");
+                maxData[0] = Integer.parseInt(data[0]); //prevCount
+                maxData[1] = Integer.parseInt(data[1]); //selfCount
+                break;
+            }
+            else{
+                maxUserId = maxUserId.subtract(BigInteger.ONE);
+            }
+        }
+
+        count = maxData[0] - minData[0] + maxData[1]; //maxPrev - minPrev + maxSelf
+        return count;
+    }
+
 
     /**
      * MySQL
@@ -327,7 +420,7 @@ public class DAO {
                 i+=2;
             }
 
-            count = counts[2] - counts[0] + counts[3];
+            count = counts[2] - counts[0] + counts[3]; //maxPrev - minPrev + maxSelf
         }
         catch (SQLException e){
             e.printStackTrace();

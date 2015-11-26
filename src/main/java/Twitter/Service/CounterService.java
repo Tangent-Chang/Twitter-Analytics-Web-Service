@@ -33,7 +33,7 @@ public class CounterService extends HttpServlet{
         out.write("TRINITY,9807-6280-2282\n".getBytes());
         if(useridMin.compareTo(useridMax) > 0){
            out.write(0);
-        }// how can I judge two userid exist?
+        }
         else{
             total = dao.retrieveCount(useridMin, useridMax);
             out.write(total.getBytes());
