@@ -7,8 +7,12 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigInteger;
+import java.util.TreeMap;
 
 
 /**
@@ -16,9 +20,10 @@ import java.io.OutputStream;
  */
 @WebServlet(urlPatterns={"/q5"})
 public class CounterService extends HttpServlet{
+
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        DAO dao = new DAO("MySQL"); //HBase or MySQL
+        DAO dao = new DAO("Memory"); //HBase or MySQL or Memory
         String total = "";
 
         request.setCharacterEncoding("UTF-8");
@@ -29,10 +34,14 @@ public class CounterService extends HttpServlet{
         response.setCharacterEncoding("UTF-8");
         OutputStream out = response.getOutputStream();
 
-        //print out multiple results
+        System.out.printf("service: minUser = %s, maxUser = %s\n", useridMin, useridMax);
+
         out.write("TRINITY,9807-6280-2282\n".getBytes());
-        if(useridMin.compareTo(useridMax) > 0){
-           out.write(0);
+        if(new BigInteger(useridMin).compareTo(new BigInteger(useridMax)) > 0){
+            out.write("0".getBytes());
+        }
+        else if(useridMax.equals("0")){
+            out.write("0".getBytes());
         }
         else{
             total = dao.retrieveCount(useridMin, useridMax);
@@ -42,5 +51,4 @@ public class CounterService extends HttpServlet{
         out.close();
 
     }
-
 }

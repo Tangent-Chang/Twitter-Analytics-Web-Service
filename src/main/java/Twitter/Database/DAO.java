@@ -1,5 +1,6 @@
 package Twitter.Database;
 
+import Twitter.Service.TaggerService;
 import Twitter.Service.TweetContent;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hadoop.conf.Configuration;
@@ -13,6 +14,8 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -26,17 +29,27 @@ public class DAO {
     private String dbType; //HBase or MySQL
     private Configuration config = null;
     private static HikariDataSource hikari = null;
-    private static Hashtable<BigInteger, String> wholeCountData = null;
+    private static TreeMap<BigInteger, String> wholeCountData = null;
+    private static TreeSet<BigInteger> wholeUserIds = null;
 
     //setup which DB type this DAO object is going to deal with
     public DAO(String dbType){
         this.dbType = dbType;
         if(this.dbType.equals("MySQL")){
             initialPool();
+
+            // for q5 mysql use
+            if(wholeUserIds == null){
+                wholeUserIds = new TreeSet<BigInteger>();
+            }
         }
-        if(wholeCountData == null){
-            wholeCountData = new Hashtable<BigInteger, String>();
+        else if(this.dbType.equals("Memory")){
+            // for q5 memory use
+            if(wholeCountData == null){
+                wholeCountData = new TreeMap<BigInteger, String>();
+            }
         }
+
     }
 
     /**
@@ -48,7 +61,7 @@ public class DAO {
             hikari = new HikariDataSource();
             hikari.setMaximumPoolSize(100);
             hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
-            hikari.addDataSourceProperty("serverName", "localhost");
+            hikari.addDataSourceProperty("serverName", "ec2-54-208-53-95.compute-1.amazonaws.com");
             hikari.addDataSourceProperty("port", "3306");
             hikari.addDataSourceProperty("databaseName", "teamproject");
             hikari.addDataSourceProperty("user", "client");
@@ -127,28 +140,91 @@ public class DAO {
 
     public String retrieveCount(String useridMin, String useridMax){
         String count = "0";
-
-        if(wholeCountData.size()<1){
-            loadAllCountData();
-        }
+        System.out.printf("retrieveCount: enter...\n");
 
         if(dbType.equals("MySQL")){
-            //int result = retrieveCountFromMysql(useridMin, useridMax);
-            int result = retrieveCountFromMemory(useridMin, useridMax);
+            //for q5 mysql use
+            if(wholeUserIds.isEmpty()){
+                loadAllUserId();
+                System.out.printf("retrieveCount: loaded whole user id...\n");
+            }
+
+            int result = retrieveCountFromMysql(useridMin, useridMax);
             count = String.valueOf(result);
+            System.out.printf("retrieveCount: count = %s\n", count);
         }
         else if(dbType.equals("HBase")){
             int result = retrieveCountFromHBase(useridMin, useridMax);
             count = String.valueOf(result);
         }
+        else if(dbType.equals("Memory")){
+            // for q5 memory use
+            if(wholeCountData.isEmpty()){
+                loadAllCountData();
+                System.out.printf("retrieveCount: loaded whole count data...\n");
+            }
+
+            int result = retrieveCountFromMemory(useridMin, useridMax);
+            count = String.valueOf(result);
+            System.out.printf("retrieveCount: count = %s\n", count);
+        }
         return count;
+    }
+
+    public String retrieveTweetContent(String tweetId){
+        String content = "";
+        if(dbType.equals("MySQL")){
+            content = retrieveContentFromMysql(tweetId);
+        }
+        return content;
+    }
+
+    private String retrieveContentFromMysql(String tweetId){
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        String content = "";
+
+        String query = "SELECT content FROM QUERY6 WHERE tweetId=?; ";
+
+        try{
+            conn = hikari.getConnection();
+
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, tweetId);
+
+            ResultSet rs = stmt.executeQuery();
+            while(rs.next()){
+                content = rs.getString(1);
+            }
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return content;
     }
 
     /**
      * Memory
      */
-    private void loadAllCountData(){
+    /*private void loadAllCountData(){
 
+        System.out.printf("loadAll: start to load whole count data...\n");
         Connection conn = null;
         Statement stmt = null;
         String query = "SELECT * FROM QUERY5; ";
@@ -187,6 +263,71 @@ public class DAO {
                 }
             }
         }
+    }*/
+
+    private void loadAllUserId(){
+        Connection conn = null;
+        Statement stmt = null;
+        String query = "SELECT userId FROM QUERY5; ";
+
+        //int count = 0;
+        try{
+            conn = hikari.getConnection();
+            stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+
+            while(rs.next()){
+                String userId = rs.getString(1);
+                wholeUserIds.add(new BigInteger(userId));
+            }
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                try{
+                    conn.close();
+                }
+                catch(SQLException e){
+                    e.printStackTrace();
+                }
+            }
+            if(stmt != null){
+                try{
+                    stmt.close();
+                }
+                catch (SQLException e){
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void loadAllCountData(){
+        // load from csv
+        try{
+            FileReader file = new FileReader("/home/ubuntu/user_counts.csv");
+            //FileReader file = new FileReader("/Users/YHWH/Desktop/cloud computing/team project/preparation/user_counts.csv");
+            BufferedReader buff = new BufferedReader(file);
+            String line = "";
+            boolean eof = false;
+
+            while(!eof){
+                line = buff.readLine();
+                if(line == null){
+                    eof = true;
+                }
+                else{
+                    String[] data = line.split("\t"); //0->id, 1->selfCount, 2->prevCount
+                    wholeCountData.put(new BigInteger(data[0]), data[2]+":"+data[1]);
+                }
+            }
+
+        }
+        catch(IOException e){
+            e.printStackTrace();
+        }
     }
 
     private int retrieveCountFromMemory(String useridMin, String useridMax){
@@ -196,31 +337,17 @@ public class DAO {
         int[] minData = new int[2];
         int[] maxData = new int[2];
 
-        while(minUserId.compareTo(maxUserId) < 0){
-            if(wholeCountData.containsKey(minUserId)){
-                String raw = wholeCountData.get(minUserId);
-                String[] data = raw.split(":");
-                minData[0] = Integer.parseInt(data[0]); //prevCount
-                minData[1] = Integer.parseInt(data[1]); //selfCount
-                break;
-            }
-            else{
-                minUserId = minUserId.add(BigInteger.ONE);
-            }
-        }
-
-        while(maxUserId.compareTo(minUserId) > 0){
-            if(wholeCountData.containsKey(maxUserId)){
-                String raw = wholeCountData.get(maxUserId);
-                String[] data = raw.split(":");
-                maxData[0] = Integer.parseInt(data[0]); //prevCount
-                maxData[1] = Integer.parseInt(data[1]); //selfCount
-                break;
-            }
-            else{
-                maxUserId = maxUserId.subtract(BigInteger.ONE);
-            }
-        }
+        //Treemap approach
+        BigInteger ceil = wholeCountData.ceilingKey(minUserId);
+        BigInteger floor =wholeCountData.floorKey(maxUserId);
+        String ceilData = wholeCountData.get(ceil);
+        String floorData = wholeCountData.get(floor);
+        String[] ceilCounts = ceilData.split(":"); //prev, self
+        String[] floorCounts = floorData.split(":"); //prev, self
+        minData[0] = Integer.parseInt(ceilCounts[0]); //prev
+        minData[1] = Integer.parseInt(ceilCounts[1]); //self
+        maxData[0] = Integer.parseInt(floorCounts[0]);//prev
+        maxData[1] = Integer.parseInt(floorCounts[1]);//self
 
         count = maxData[0] - minData[0] + maxData[1]; //maxPrev - minPrev + maxSelf
         return count;
@@ -235,7 +362,7 @@ public class DAO {
         PreparedStatement stmt = null;
         ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
 
-        String query = "SELECT TWEETID_SCORE_TEXT FROM QUERY2 WHERE USER_TIME=?";
+        String query = "SELECT TWEETID_SCORE_TEXT FROM QUERY2 WHERE USER_TIME=?;";
 
         try{
             conn = hikari.getConnection();
@@ -271,6 +398,46 @@ public class DAO {
             }
         }
         return tweetResults;
+    }
+
+    public void loadAllTextFromMySql(){
+        Connection conn = null;
+        Statement stmt = null;
+        //ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
+
+        String query = "SELECT * FROM QUERY2; ";
+
+        try{
+            conn = hikari.getConnection();
+            stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+
+            while(rs.next()){
+                String tweetId = rs.getString(1);
+                TaggerService.data.put(tweetId, decode(rs.getString(2)));
+            }
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if(conn != null){
+                try{
+                    conn.close();
+                }
+                catch(SQLException e){
+                    e.printStackTrace();
+                }
+            }
+            if(stmt != null){
+                try{
+                    stmt.close();
+                }
+                catch (SQLException e){
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
 
@@ -402,6 +569,10 @@ public class DAO {
         Connection conn = null;
         PreparedStatement stmt = null;
         String query = "SELECT prevCount, count FROM QUERY5 WHERE userId=? AND userId=?";
+
+        //check userid exists in wholeUserIds
+        BigInteger ceil = wholeCountData.ceilingKey(new BigInteger(useridMin));
+        BigInteger floor =wholeCountData.floorKey(new BigInteger(useridMax));
 
         int count = 0;
         try{
@@ -680,5 +851,13 @@ public class DAO {
         });
 
         return records;
+    }
+
+    public String decode(String str){
+        String decoded = str.replaceAll("\\\\r", "\r");
+        decoded = decoded.replaceAll("\\\\n", "\n");
+        decoded = decoded.replaceAll("\\\\\"", "\"");  //double quote
+        decoded = decoded.replaceAll("\\\\\'", "\'");  //single quote
+        return decoded;
     }
 }

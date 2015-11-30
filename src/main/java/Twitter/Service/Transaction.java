@@ -1,5 +1,6 @@
 package Twitter.Service;
 
+import Twitter.Database.DAO;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import javax.servlet.AsyncContext;
@@ -15,10 +16,12 @@ public class Transaction implements Runnable{
     private String tid = "";
     private PriorityBlockingQueue<Operation> operations = null;
     private int next = 0;
+    private DAO dao = null;
 
     public Transaction(String tid){
         this.tid = tid;
         operations = new PriorityBlockingQueue<Operation>();
+        dao = new DAO("MySQL");
     }
 
     public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async){
@@ -60,9 +63,37 @@ public class Transaction implements Runnable{
             Operation one = operations.take();
 
             if(one.getOpt().equals("a")){
+                // check if there is already tweet content in hashtable
+                String content = TaggerService.data.get(one.getTweetId());
+                if(content==null){
+                    //no original content, set tag as original content
+                    content = one.getTag();
+                }
+                else{
+                    //has original content, append tag to content
+                    content = content + one.getTag();
+                }
+                //write update content back to hashtable
+                TaggerService.data.put(one.getTweetId(), content);
+                message = one.getTag();
+            }
+            else if(one.getOpt().equals("r")){
+                String content = dao.retrieveTweetContent(one.getTweetId());
+                //check if there is aleady tweet tag in hashtable
+                String tag = TaggerService.data.get(one.getTweetId());
+                if(tag!=null){
+                    //has tag, append it to content
+                    content = content + tag;
+                }
+                //write content to hashtable
+                TaggerService.data.put(one.getTweetId(), content);
+                message = content;
+            }
+
+            /*if(one.getOpt().equals("a")){
                 // write data to hashtable
                 StringBuffer s = new StringBuffer();
-                s.append(TaggerService.data.get(one.getTweetId()));
+                s.append(TaggerService.data.get(one.getTweetId())); //get original tweet
                 s.append(one.getTag());
                 TaggerService.data.put(one.getTweetId(), s.toString());
                 message = one.getTag();
@@ -70,7 +101,7 @@ public class Transaction implements Runnable{
             else if(one.getOpt().equals("r")){
                 // read data from hashtable
                 message = TaggerService.data.get(one.getTweetId());
-            }
+            }*/
             writeResp(message, one.getResp());
             one.completeAsync();
         }

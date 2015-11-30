@@ -7,6 +7,7 @@ public class TweetContent {
     private String line; //include tweetId, sensitive score, tweetText
     private String q3result; //include create date, impact score, tweet id, tweet text
     private String q4result; //include date, count, user ids, tweet text
+    private String q6result; //tweet content only
 
 
     public TweetContent(String line){
@@ -15,8 +16,13 @@ public class TweetContent {
     public TweetContent(String createDate, String impactScore, String tweetId, String tweetText){
         this.q3result = createDate +","+ impactScore +","+ tweetId +","+ tweetText;
     }
-    public TweetContent(String q4, String value){
-        this.q4result = value;
+    public TweetContent(String query, String value){
+        if(query.equals("q4")){
+            this.q4result = value;
+        }
+        else if(query.equals("q6")){
+            this.q6result = value;
+        }
     }
 
     public String getLine(){
@@ -51,7 +57,11 @@ public class TweetContent {
         return decode(q4result);
     }
 
-    private String decode(String str){
+    public String getQ6result() {
+        return decode(q6result);
+    }
+
+    public String decode(String str){
         String decoded = str.replaceAll("\\\\r", "\r");
         decoded = decoded.replaceAll("\\\\n", "\n");
         decoded = decoded.replaceAll("\\\\\"", "\"");  //double quote
