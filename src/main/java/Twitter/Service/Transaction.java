@@ -6,26 +6,44 @@ import org.apache.hadoop.hbase.util.Bytes;
 import javax.servlet.AsyncContext;
 import javax.servlet.ServletResponse;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  * Created by YHWH on 11/23/15.
  */
 public class Transaction implements Runnable{
-    private boolean state = false; //true = start, false = not start or end.
+    /*private boolean state = false; //true = start, false = not start or end.
     private String tid = "";
     private PriorityBlockingQueue<Operation> operations = null;
+    private int next = 0;
+    private DAO dao = null;*/
+    private boolean end = false; //
+    private String tid = "";
+    private PriorityBlockingQueue<Operation> requests = null;
+    private PriorityQueue<Operation> operations = null;
+    private HashMap<String, String> tagMap = null;
+    private HashMap<String, String> tweetTextMap = null;
     private int next = 0;
     private DAO dao = null;
 
     public Transaction(String tid){
-        this.tid = tid;
+        /*this.tid = tid;
         operations = new PriorityBlockingQueue<Operation>();
+        dao = new DAO("MySQL");*/
+
+        this.tid = tid;
+        requests = new PriorityBlockingQueue<Operation>();
+        operations = new PriorityQueue<Operation>();
+        tagMap = new HashMap<String, String>();
+        tweetTextMap = new HashMap<String, String>();
         dao = new DAO("MySQL");
     }
 
-    public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async){
-        try{
+    public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async) {
+    //public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async){
+        /*try{
             if(opt.equals("s")){
                 state = true;
                 next = 1;
@@ -44,21 +62,72 @@ public class Transaction implements Runnable{
         }
         catch(NullPointerException e){
             e.printStackTrace();
+        }*/
+        try {
+            if (opt.equals("s")) {
+                Operation request = new Operation("0", opt, tweetId, tag, async);
+                requests.offer(request);
+                return;
+            }
+
+            if (opt.equals("e")) {
+                Operation request = new Operation("6", opt, tweetId, tag, async);
+                requests.offer(request);
+                return;
+            }
+
+            // opt = a or r
+            if (requests.isEmpty() || requests.peek().getSeq() != (Integer.parseInt(sequence))) {
+                Operation request = new Operation(sequence, opt, tweetId, tag, async);
+                requests.offer(request);
+            }
+        } catch (NullPointerException e) {
+            e.printStackTrace();
         }
     }
 
 
     public void run() {
-        while(state){
+        /*while(state){
             if(operations.size() > 0 && next == operations.peek().getSeq()){
                 executeReq();
                 next++;
             }
+        }*/
+        Operation request = null;
+        while (!end) {
+            try {
+                request = requests.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                System.out.println(e);
+            }
+
+            operations.offer(request);
+
+            if (!operations.isEmpty() && next == operations.peek().getSeq()) {
+                Operation operation = operations.poll();
+                executeReq(operation);
+                next++;
+            }
         }
+        destructor();
     }
 
-    public void executeReq(){
-        try{
+    private void destructor() {
+        TaggerService.transactions.remove(tid);
+        dao = null;
+        requests = null;
+        tid = null;
+        requests = null;
+        operations = null;
+        tagMap = null;
+        tweetTextMap = null;
+    }
+
+    public void executeReq(Operation operation) {
+    //public void executeReq(){
+        /*try{
             String message = "";
             Operation one = operations.take();
 
@@ -89,19 +158,6 @@ public class Transaction implements Runnable{
                 TaggerService.data.put(one.getTweetId(), content);
                 message = content;
             }
-
-            /*if(one.getOpt().equals("a")){
-                // write data to hashtable
-                StringBuffer s = new StringBuffer();
-                s.append(TaggerService.data.get(one.getTweetId())); //get original tweet
-                s.append(one.getTag());
-                TaggerService.data.put(one.getTweetId(), s.toString());
-                message = one.getTag();
-            }
-            else if(one.getOpt().equals("r")){
-                // read data from hashtable
-                message = TaggerService.data.get(one.getTweetId());
-            }*/
             writeResp(message, one.getResp());
             one.completeAsync();
         }
@@ -110,7 +166,38 @@ public class Transaction implements Runnable{
         }
         catch(NullPointerException e){
             e.printStackTrace();
+        }*/
+        String response = "";
+
+        if (operation.getOpt().equals("s")) {
+            response = "0";
         }
+
+        if (operation.getOpt().equals("e")) {
+            response = "0";
+            end = true;
+        }
+
+        String tweetText = tweetTextMap.get(operation.getTweetId());
+        if (tweetText == null || tweetText.isEmpty()) {
+            tweetText = dao.retrieveTweetContent(operation.getTweetId());
+            tweetTextMap.put(operation.getTweetId(), tweetText);
+        }
+
+        if (operation.getOpt().equals("a")) {
+            tagMap.put(operation.getTweetId(), operation.getTag());
+            response = operation.getTag();
+        } else if (operation.getOpt().equals("r")) {
+            String tag = tagMap.get(operation.getTweetId());
+            if (tag == null || tag.isEmpty()) {
+                response = tweetText;
+            } else {
+                response = tweetText + tag;
+            }
+        }
+
+        writeResp(response, operation.getResp());
+        operation.completeAsync();
     }
 
     public void writeResp(String message, ServletResponse resp) {

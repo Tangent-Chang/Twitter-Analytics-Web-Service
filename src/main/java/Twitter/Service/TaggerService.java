@@ -19,7 +19,7 @@ import java.util.Hashtable;
 
 public class TaggerService extends HttpServlet {
     static Hashtable<String, Transaction> transactions = new Hashtable<String, Transaction>();
-    public static Hashtable<String, String> data = new Hashtable<String, String>(); //<tweetid, content>
+    //public static Hashtable<String, String> data = new Hashtable<String, String>(); //<tweetid, content>
 
 
     @Override

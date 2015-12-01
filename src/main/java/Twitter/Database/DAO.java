@@ -228,8 +228,8 @@ public class DAO {
     private void loadAllCountData(){
         // load from csv
         try{
-            FileReader file = new FileReader("/home/ubuntu/user_counts.csv");
-            //FileReader file = new FileReader("/Users/YHWH/Desktop/cloud computing/team project/preparation/user_counts.csv");
+            //FileReader file = new FileReader("/home/ubuntu/user_counts.csv");
+            FileReader file = new FileReader("/Users/YHWH/Desktop/cloud computing/team project/user_counts.csv");
             BufferedReader buff = new BufferedReader(file);
             String line = "";
             boolean eof = false;
@@ -315,46 +315,6 @@ public class DAO {
             }
         }
         return tweetResults;
-    }
-
-    public void loadAllTextFromMySql(){
-        Connection conn = null;
-        Statement stmt = null;
-        //ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-
-        String query = "SELECT * FROM QUERY2; ";
-
-        try{
-            conn = hikari.getConnection();
-            stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(query);
-
-            while(rs.next()){
-                String tweetId = rs.getString(1);
-                TaggerService.data.put(tweetId, decode(rs.getString(2)));
-            }
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        finally {
-            if(conn != null){
-                try{
-                    conn.close();
-                }
-                catch(SQLException e){
-                    e.printStackTrace();
-                }
-            }
-            if(stmt != null){
-                try{
-                    stmt.close();
-                }
-                catch (SQLException e){
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 
 
@@ -597,7 +557,7 @@ public class DAO {
                 }
             }
         }
-        return content;
+        return decode(content);
     }
 
     /**
