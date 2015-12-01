@@ -19,7 +19,7 @@ public class HashtagService extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        DAO dao = new DAO("HBase"); //HBase or MySQL
+        DAO dao = new DAO("MySQL"); //HBase or MySQL
         ArrayList<TweetContent> tagResults = null;
 
         request.setCharacterEncoding("UTF-8");
@@ -33,7 +33,7 @@ public class HashtagService extends HttpServlet {
         PrintWriter out = response.getWriter();
 
         //print out multiple results
-        out.println("TRINITY,9807-6280-2282");
+        out.printf("TRINITY,9807-6280-2282");
         for(TweetContent each : tagResults){
             out.printf("%s\n", each.getQ4result());
         }

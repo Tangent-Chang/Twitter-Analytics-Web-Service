@@ -43,4 +43,12 @@ GRANT ALL PRIVILEGES ON *.* TO 'client'@'%' WITH GRANT OPTION;
 cd /etc/mysql 
 sudo nano my.cnf
 # add this
-bind-address=0.0.0.0		
+bind-address=0.0.0.0	
+
+#set java heap space
+cd /opt/apache-tomcat-8.0.28/bin/
+sudo nano setenv.sh
+export CATALINA_OPTS="$CATALINA_OPTS -Xms512m"
+export CATALINA_OPTS="$CATALINA_OPTS -Xmx4096m"
+export CATALINA_OPTS="$CATALINA_OPTS -XX:MaxPermSize=4096m"
+	

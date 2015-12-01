@@ -22,6 +22,9 @@ import java.util.TreeMap;
 public class CounterService extends HttpServlet{
 
     @Override
+    public void init(){}
+
+    @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         DAO dao = new DAO("Memory"); //HBase or MySQL or Memory
         String total = "";
@@ -37,7 +40,8 @@ public class CounterService extends HttpServlet{
         System.out.printf("service: minUser = %s, maxUser = %s\n", useridMin, useridMax);
 
         out.write("TRINITY,9807-6280-2282\n".getBytes());
-        if(new BigInteger(useridMin).compareTo(new BigInteger(useridMax)) > 0){
+        if(useridMin.compareTo(useridMax) > 0){
+        //if(new BigInteger(useridMin).compareTo(new BigInteger(useridMax)) > 0){
             out.write("0".getBytes());
         }
         else if(useridMax.equals("0")){

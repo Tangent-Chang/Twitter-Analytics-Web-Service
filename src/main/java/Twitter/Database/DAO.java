@@ -29,7 +29,7 @@ public class DAO {
     private String dbType; //HBase or MySQL
     private Configuration config = null;
     private static HikariDataSource hikari = null;
-    private static TreeMap<BigInteger, String> wholeCountData = null;
+    private static TreeMap<String, Integer> wholeCountData = null;
     private static TreeSet<BigInteger> wholeUserIds = null;
 
     //setup which DB type this DAO object is going to deal with
@@ -46,7 +46,7 @@ public class DAO {
         else if(this.dbType.equals("Memory")){
             // for q5 memory use
             if(wholeCountData == null){
-                wholeCountData = new TreeMap<BigInteger, String>();
+                wholeCountData = new TreeMap<String, Integer>();
             }
         }
 
@@ -61,7 +61,7 @@ public class DAO {
             hikari = new HikariDataSource();
             hikari.setMaximumPoolSize(100);
             hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
-            hikari.addDataSourceProperty("serverName", "ec2-54-208-53-95.compute-1.amazonaws.com");
+            hikari.addDataSourceProperty("serverName", "ec2-52-90-240-167.compute-1.amazonaws.com");
             hikari.addDataSourceProperty("port", "3306");
             hikari.addDataSourceProperty("databaseName", "teamproject");
             hikari.addDataSourceProperty("user", "client");
@@ -103,8 +103,10 @@ public class DAO {
             tweetResults = retrieveDataFromHBase(rowKey);
         }
         else if(dbType.equals("MySQL")){
+            System.out.printf("DAO: enter retrieveTweet ...\n");
             String idWithTime = pad(userId) + separator + tweetTime;
             tweetResults = retrieveDataFromMySql(idWithTime);
+
         }
         return tweetResults;
     }
@@ -179,96 +181,15 @@ public class DAO {
         return content;
     }
 
-    private String retrieveContentFromMysql(String tweetId){
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        String content = "";
 
-        String query = "SELECT content FROM QUERY6 WHERE tweetId=?; ";
-
-        try{
-            conn = hikari.getConnection();
-
-            stmt = conn.prepareStatement(query);
-            stmt.setString(1, tweetId);
-
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()){
-                content = rs.getString(1);
-            }
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (stmt != null) {
-                try {
-                    stmt.close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return content;
-    }
 
     /**
      * Memory
      */
-    /*private void loadAllCountData(){
-
-        System.out.printf("loadAll: start to load whole count data...\n");
-        Connection conn = null;
-        Statement stmt = null;
-        String query = "SELECT * FROM QUERY5; ";
-
-        //int count = 0;
-        try{
-            conn = hikari.getConnection();
-            stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(query);
-
-            while(rs.next()){
-                String userId = rs.getString(1);
-                String prevCount = rs.getString(2);
-                String count = rs.getString(3);
-                wholeCountData.put(new BigInteger(userId), prevCount +":"+ count);
-            }
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        finally {
-            if(conn != null){
-                try{
-                    conn.close();
-                }
-                catch(SQLException e){
-                    e.printStackTrace();
-                }
-            }
-            if(stmt != null){
-                try{
-                    stmt.close();
-                }
-                catch (SQLException e){
-                    e.printStackTrace();
-                }
-            }
-        }
-    }*/
-
     private void loadAllUserId(){
         Connection conn = null;
         Statement stmt = null;
-        String query = "SELECT userId FROM QUERY5; ";
+        String query = "SELECT USER_ID FROM QUERY5; ";
 
         //int count = 0;
         try{
@@ -320,36 +241,32 @@ public class DAO {
                 }
                 else{
                     String[] data = line.split("\t"); //0->id, 1->selfCount, 2->prevCount
-                    wholeCountData.put(new BigInteger(data[0]), data[2]+":"+data[1]);
+                    wholeCountData.put(data[0], Integer.parseInt(data[2]));
                 }
             }
+            buff.close();
 
         }
         catch(IOException e){
             e.printStackTrace();
         }
+        finally{
+
+        }
     }
 
     private int retrieveCountFromMemory(String useridMin, String useridMax){
-        BigInteger minUserId = new BigInteger(useridMin);
-        BigInteger maxUserId = new BigInteger(useridMax);
         int count = 0;
-        int[] minData = new int[2];
-        int[] maxData = new int[2];
+        int minCount = 0;
+        int maxOneMoreCount = 0;
 
-        //Treemap approach
-        BigInteger ceil = wholeCountData.ceilingKey(minUserId);
-        BigInteger floor =wholeCountData.floorKey(maxUserId);
-        String ceilData = wholeCountData.get(ceil);
-        String floorData = wholeCountData.get(floor);
-        String[] ceilCounts = ceilData.split(":"); //prev, self
-        String[] floorCounts = floorData.split(":"); //prev, self
-        minData[0] = Integer.parseInt(ceilCounts[0]); //prev
-        minData[1] = Integer.parseInt(ceilCounts[1]); //self
-        maxData[0] = Integer.parseInt(floorCounts[0]);//prev
-        maxData[1] = Integer.parseInt(floorCounts[1]);//self
+        String minKey = wholeCountData.ceilingKey(useridMin);
+        String maxKey = wholeCountData.floorKey(useridMax);
+        String maxOneMoreKey = wholeCountData.higherKey(maxKey);
+        minCount = wholeCountData.get(minKey);
+        maxOneMoreCount = wholeCountData.get(maxOneMoreKey);
 
-        count = maxData[0] - minData[0] + maxData[1]; //maxPrev - minPrev + maxSelf
+        count = maxOneMoreCount - minCount;
         return count;
     }
 
@@ -450,7 +367,7 @@ public class DAO {
         PreparedStatement stmt = null;
         String query =
                 "SELECT CREATED_AT,SCORE,TWEET_ID,CENSORED_TEXT " +
-                "FROM QUERY3 " +
+                "FROM QUERY33 " +
                 "WHERE USER_ID=? AND CREATED_AT >= ? AND CREATED_AT <= ? " +
                 "ORDER BY ABS(SCORE) DESC, TWEET_ID ASC ";
 
@@ -517,7 +434,7 @@ public class DAO {
 
         Connection conn = null;
         PreparedStatement stmt = null;
-        String query = "SELECT ALLVALUE FROM QUERY4 WHERE HASHTAG=?";
+        String query = "SELECT ALLVALUE FROM QUERY4 WHERE HASHTAG=?; ";
 
         try{
             conn = hikari.getConnection();
@@ -568,19 +485,22 @@ public class DAO {
     private int retrieveCountFromMysql(String useridMin, String useridMax){
         Connection conn = null;
         PreparedStatement stmt = null;
-        String query = "SELECT prevCount, count FROM QUERY5 WHERE userId=? AND userId=?";
+        String query = "SELECT CUMULATIVE_TWEET_COUNT, USERID_TWEET_COUNT FROM QUERY5 WHERE USER_ID=? AND USER_ID=?";
 
         //check userid exists in wholeUserIds
-        BigInteger ceil = wholeCountData.ceilingKey(new BigInteger(useridMin));
-        BigInteger floor =wholeCountData.floorKey(new BigInteger(useridMax));
+        //BigInteger ceil = wholeCountData.ceilingKey(new BigInteger(useridMin));
+        //BigInteger floor =wholeCountData.floorKey(new BigInteger(useridMax));
+        String minUser = wholeCountData.ceilingKey(useridMin);
+        String maxUser = wholeCountData.floorKey(useridMax);
+        //String maxUserOneMore = wholeCountData.higherKey(maxUser)
 
         int count = 0;
         try{
             conn = hikari.getConnection();
 
             stmt = conn.prepareStatement(query);
-            stmt.setString(1, useridMin);
-            stmt.setString(2, useridMax);
+            stmt.setString(1, minUser);
+            stmt.setString(2, maxUser);
             ResultSet rs = stmt.executeQuery();
 
             int[] counts = new int[4]; //minPrev, minSelf, maxPrev, maxSelf
@@ -615,6 +535,46 @@ public class DAO {
             }
         }
         return count;
+    }
+
+    private String retrieveContentFromMysql(String tweetId){
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        String content = "";
+
+        String query = "SELECT TWEET_TEXT FROM QUERY6 WHERE TWEET_ID=?; ";
+
+        try{
+            conn = hikari.getConnection();
+
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, tweetId);
+
+            ResultSet rs = stmt.executeQuery();
+            while(rs.next()){
+                content = rs.getString(1);
+            }
+        }
+        catch (SQLException e){
+            e.printStackTrace();
+        }
+        finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (stmt != null) {
+                try {
+                    stmt.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return content;
     }
 
     /**
@@ -815,7 +775,7 @@ public class DAO {
         String bufferStr = "";
 
         for(int i = 0; i < records.length; i++){
-            if(records.length > 5 && records[i].substring(0, 5).equals("2014-")){
+            if(records[i].length() > 5 && records[i].substring(0, 5).equals("2014-")){
                 // means this line is a new record, so we know the bufferStr is end, and can be put into formal list now
                 // then treat this line as bufferStr
                 if(!bufferStr.isEmpty()){

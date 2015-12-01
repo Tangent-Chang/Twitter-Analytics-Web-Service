@@ -24,7 +24,7 @@ public class TextService extends HttpServlet {
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
-        DAO dao = new DAO("HBase"); //HBase or MySQL
+        DAO dao = new DAO("MySQL"); //HBase or MySQL
 
         String rawQuery = request.getQueryString(); //use getParameter will lose timestamp format
         CharSequence sep1 = "&";

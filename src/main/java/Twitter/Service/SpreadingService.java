@@ -21,7 +21,7 @@ public class SpreadingService extends HttpServlet {
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         HashMap<String, ArrayList<TweetContent>> impactResults; //key: Positive, Negative
-        DAO dao = new DAO("HBase"); //HBase or MySQL
+        DAO dao = new DAO("MySQL"); //HBase or MySQL
 
         String userId = request.getParameter("userid");
         String startDate = request.getParameter("start_date");
