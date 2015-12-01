@@ -8,13 +8,17 @@ public class TweetContent {
     private String q3result; //include create date, impact score, tweet id, tweet text
     private String q4result; //include date, count, user ids, tweet text
     private String q6result; //tweet content only
+    private long score;
+    private String tweetId;
 
 
     public TweetContent(String line){
         this.line = line;
     }
-    public TweetContent(String createDate, String impactScore, String tweetId, String tweetText){
-        this.q3result = createDate +","+ impactScore +","+ tweetId +","+ tweetText;
+    public TweetContent(String createDate, long score, String tweetId, String tweetText){
+        this.score = score;
+        this.tweetId = tweetId;
+        this.q3result = createDate +","+ String.valueOf(score) +","+ tweetId +","+ tweetText;
     }
     public TweetContent(String query, String value){
         if(query.equals("q4")){
@@ -51,6 +55,12 @@ public class TweetContent {
 
     public String getQ3Result(){
         return decode(q3result);
+    }
+    public long getScore(){
+        return score;
+    }
+    public String getTweetId(){
+        return tweetId;
     }
 
     public String getQ4result(){

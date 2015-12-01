@@ -33,7 +33,7 @@ public class HashtagService extends HttpServlet {
         PrintWriter out = response.getWriter();
 
         //print out multiple results
-        out.printf("TRINITY,9807-6280-2282");
+        out.println("TRINITY,9807-6280-2282");
         for(TweetContent each : tagResults){
             out.printf("%s\n", each.getQ4result());
         }

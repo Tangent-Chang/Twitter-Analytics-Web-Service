@@ -59,7 +59,7 @@ public class DAO {
     private static void initialPool(){
         if(hikari == null){
             hikari = new HikariDataSource();
-            hikari.setMaximumPoolSize(100);
+            hikari.setMaximumPoolSize(50);
             hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
             hikari.addDataSourceProperty("serverName", "ec2-52-90-240-167.compute-1.amazonaws.com");
             hikari.addDataSourceProperty("port", "3306");
@@ -111,8 +111,8 @@ public class DAO {
         return tweetResults;
     }
 
-    public HashMap<String, ArrayList<TweetContent>> retrieveImpactTweet(String startDate, String endDate, String id, String qty){
-        HashMap<String, ArrayList<TweetContent>> impactResults = null;
+    public HashMap<String, List<TweetContent>> retrieveImpactTweet(String startDate, String endDate, String id, String qty){
+        HashMap<String, List<TweetContent>> impactResults = null;
         BigDecimal userId = new BigDecimal(id);
         int tweetQty = Integer.parseInt(qty);
 
@@ -120,7 +120,7 @@ public class DAO {
             impactResults = retrieveImpactFromMySql(startDate, endDate, userId, tweetQty);
         }
         else if(dbType.equals("HBase")){
-            impactResults = retrieveImpactFromHBase(startDate, endDate, id, tweetQty);
+            //impactResults = retrieveImpactFromHBase(startDate, endDate, id, tweetQty);
         }
 
         return impactResults;
@@ -358,18 +358,19 @@ public class DAO {
     }
 
 
-    private HashMap<String, ArrayList<TweetContent>> retrieveImpactFromMySql(String startDate, String endDate, BigDecimal userId, int tweetQty){
-        HashMap<String, ArrayList<TweetContent>> impactResults = new HashMap<String, ArrayList<TweetContent>>();
-        ArrayList<TweetContent> positiveResults = new ArrayList<TweetContent>();
-        ArrayList<TweetContent> negativeResults = new ArrayList<TweetContent>();
+    private HashMap<String, List<TweetContent>> retrieveImpactFromMySql(String startDate, String endDate, BigDecimal userId, int tweetQty){
+        HashMap<String, List<TweetContent>> impactResults = new HashMap<String, List<TweetContent>>();
+        List<TweetContent> positiveResults = new ArrayList<TweetContent>();
+        List<TweetContent> negativeResults = new ArrayList<TweetContent>();
 
         Connection conn = null;
         PreparedStatement stmt = null;
         String query =
-                "SELECT CREATED_AT,SCORE,TWEET_ID,CENSORED_TEXT " +
+                "SELECT CREATED_AT,TWEETS_TEXT FROM QUERY33 WHERE USER_ID=? AND CREATED_AT >= ? AND CREATED_AT <= ?; ";
+               /* "SELECT CREATED_AT,SCORE,TWEET_ID,CENSORED_TEXT " +
                 "FROM QUERY33 " +
                 "WHERE USER_ID=? AND CREATED_AT >= ? AND CREATED_AT <= ? " +
-                "ORDER BY ABS(SCORE) DESC, TWEET_ID ASC ";
+                "ORDER BY ABS(SCORE) DESC, TWEET_ID ASC ";*/
 
         try{
             conn = hikari.getConnection();
@@ -380,16 +381,32 @@ public class DAO {
             stmt.setString(3, endDate);
 
             ResultSet rs = stmt.executeQuery();
-            int positiveCount = 0;
-            int negativeCount = 0;
+            //int positiveCount = 0;
+            //int negativeCount = 0;
             while(rs.next()){
                 String createdAt = rs.getString(1);
-                int score = rs.getInt(2);
+                String tweetText = rs.getString(2);
+                /*int score = rs.getInt(2);
                 String tweetId = rs.getString(3);
-                String text = rs. getString(4);
+                String text = rs. getString(4);*/
+
+                //System.out.printf("DAO: q3 raw text = %s\n", tweetQty);
+
+                String[] parts = tweetText.split(String.valueOf((char) 2)); //tweetText print result is "2" ???
+                for (int i=0; i<parts.length-1; i+=3) {
+                    String tweetId = parts[i];
+                    long score = Long.parseLong(parts[i+1]);
+                    String text = parts[i+2];
+                    TweetContent one = new TweetContent(createdAt, score, tweetId, text);
+                    if (score > 0) {
+                        positiveResults.add(one);
+                        } else if (score < 0) {
+                        negativeResults.add(one);
+                        }
+                }
 
                 // no need to use sort function, since retrieved data is already sorted
-                if(score > 0 && positiveCount < tweetQty){
+                /*if(score > 0 && positiveCount < tweetQty){
                     TweetContent one = new TweetContent(createdAt, String.valueOf(score), tweetId, text);
                     positiveResults.add(one);
                     positiveCount++;
@@ -398,8 +415,14 @@ public class DAO {
                     TweetContent one = new TweetContent(createdAt, String.valueOf(score), tweetId, text);
                     negativeResults.add(one);
                     negativeCount++;
-                }
+                }*/
             }
+
+            Collections.sort(positiveResults, comp);
+            Collections.sort(negativeResults, comp);
+
+            positiveResults = positiveResults.subList(0, Math.min(positiveResults.size(), tweetQty));
+            negativeResults = negativeResults.subList(0, Math.min(negativeResults.size(), tweetQty));
             impactResults.put("Positive", positiveResults);
             impactResults.put("Negative", negativeResults);
 
@@ -695,13 +718,13 @@ public class DAO {
 
             for(String[] each : unsortPosRecords){
                 if(positiveCount < tweetQty){
-                    positiveResults.add(new TweetContent(each[0], each[1], each[2], each[3]));
+                    //positiveResults.add(new TweetContent(each[0], each[1], each[2], each[3]));
                     positiveCount++;
                 }
             }
             for(String[] each : unsortNegRecords){
                 if(negativeCount < tweetQty){
-                    negativeResults.add(new TweetContent(each[0], each[1], each[2], each[3]));
+                    //negativeResults.add(new TweetContent(each[0], each[1], each[2], each[3]));
                     negativeCount++;
                 }
             }
@@ -775,6 +798,9 @@ public class DAO {
         String bufferStr = "";
 
         for(int i = 0; i < records.length; i++){
+
+            //System.out.printf("DAO: merge record = %s\n", records[i]);
+
             if(records[i].length() > 5 && records[i].substring(0, 5).equals("2014-")){
                 // means this line is a new record, so we know the bufferStr is end, and can be put into formal list now
                 // then treat this line as bufferStr
@@ -791,7 +817,7 @@ public class DAO {
         }
         // in case there is only one line
         if(!bufferStr.isEmpty()){
-            correctRecords.add(bufferStr);
+            correctRecords.add(records[0]);
         }
 
         return correctRecords.toArray(new String[correctRecords.size()]);
@@ -820,4 +846,13 @@ public class DAO {
         decoded = decoded.replaceAll("\\\\\'", "\'");  //single quote
         return decoded;
     }
+
+    static final Comparator<TweetContent> comp = new Comparator<TweetContent>() {
+        public int compare(TweetContent o1, TweetContent o2) {
+            long c = Math.abs(o1.getScore()) - Math.abs(o2.getScore());
+            if (c < 0) return 1;
+            if (c > 0) return -1;
+            return o1.getTweetId().compareTo(o2.getTweetId());
+            }
+        };
 }

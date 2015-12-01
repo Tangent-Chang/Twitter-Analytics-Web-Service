@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Created by YHWH on 11/5/15.
@@ -20,7 +21,7 @@ public class SpreadingService extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        HashMap<String, ArrayList<TweetContent>> impactResults; //key: Positive, Negative
+        HashMap<String, List<TweetContent>> impactResults; //key: Positive, Negative
         DAO dao = new DAO("MySQL"); //HBase or MySQL
 
         String userId = request.getParameter("userid");
