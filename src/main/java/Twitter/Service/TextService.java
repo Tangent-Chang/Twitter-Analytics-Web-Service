@@ -8,6 +8,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -38,20 +39,22 @@ public class TextService extends HttpServlet {
             String[] timeQuery = query[1].split("=");
             String tweetTime = timeQuery[1];
 
-            System.out.printf("Servlet: received request %s,%s...\n", userId, tweetTime);
-
             //retrieve data from DB with parameters
             tweetResults = dao.retrieveTweet(userId, tweetTime);
         }
 
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
-        PrintWriter out = response.getWriter();
+        //PrintWriter out = response.getWriter();
+        OutputStream out = response.getOutputStream();
 
         //print out multiple results
-        out.println("TRINITY,9807-6280-2282");
+        //out.println("TRINITY,9807-6280-2282");
+        out.write("TRINITY,9807-6280-2282\n".getBytes());
         for(TweetContent each : tweetResults){
-            out.printf("%s", each.getLine());
+            //out.printf("%s", each.getLine());
+            out.write(each.getLine().getBytes());
+            out.close();
         }
     }
 }

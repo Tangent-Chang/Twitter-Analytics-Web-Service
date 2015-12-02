@@ -106,7 +106,6 @@ public class DAO {
             tweetResults = retrieveDataFromHBase(rowKey);
         }
         else if(dbType.equals("MySQL")){
-            //System.out.printf("DAO: enter retrieveTweet ...\n");
             String idWithTime = pad(userId) + separator + tweetTime;
             tweetResults = retrieveDataFromMySql(idWithTime);
 
@@ -145,33 +144,22 @@ public class DAO {
 
     public String retrieveCount(String useridMin, String useridMax){
         String count = "0";
-        System.out.printf("retrieveCount: enter...\n");
 
         if(dbType.equals("MySQL")){
-            //for q5 mysql use
-            /*if(wholeUserIds.isEmpty()){
-                loadAllUserId();
-                System.out.printf("retrieveCount: loaded whole user id...\n");
-            }*/
-
             int result = retrieveCountFromMysql(useridMin, useridMax);
             count = String.valueOf(result);
-            System.out.printf("retrieveCount: count = %s\n", count);
         }
         else if(dbType.equals("HBase")){
             int result = retrieveCountFromHBase(useridMin, useridMax);
             count = String.valueOf(result);
         }
         else if(dbType.equals("Memory")){
-            // for q5 memory use
             if(wholeCountData.isEmpty()){
                 loadAllCountData();
-                System.out.printf("retrieveCount: loaded whole count data...\n");
             }
 
             int result = retrieveCountFromMemory(useridMin, useridMax);
             count = String.valueOf(result);
-            System.out.printf("retrieveCount: count = %s\n", count);
         }
         return count;
     }
@@ -191,7 +179,6 @@ public class DAO {
      */
     public void loadAllUserId(){
         //load from csv
-        System.out.printf("DAO: start to load users from csv...\n");
         try{
             FileReader file = new FileReader("/home/ubuntu/user_counts.csv");
             //FileReader file = new FileReader("/Users/YHWH/Desktop/cloud computing/team project/user_counts_small.csv");
@@ -214,47 +201,6 @@ public class DAO {
         catch(IOException e){
             e.printStackTrace();
         }
-        System.out.printf("DAO: end of loading users from csv...\n");
-
-        //load from mysql
-        /*Connection conn = null;
-        Statement stmt = null;
-        String query = "SELECT USER_ID FROM QUERY5; ";
-
-        System.out.printf("DAO: enter loadAllUser...\n");
-        //int count = 0;
-        try{
-            conn = hikari.getConnection();
-            stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(query);
-            System.out.printf("DAO: retrieved llUserIds from mysql...\n");
-
-            while(rs.next()){
-                String userId = rs.getString(1);
-                wholeUserIds.add(Long.parseLong(userId));
-            }
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        finally {
-            if(conn != null){
-                try{
-                    conn.close();
-                }
-                catch(SQLException e){
-                    e.printStackTrace();
-                }
-            }
-            if(stmt != null){
-                try{
-                    stmt.close();
-                }
-                catch (SQLException e){
-                    e.printStackTrace();
-                }
-            }
-        }*/
     }
 
     private void loadAllCountData(){
@@ -348,96 +294,12 @@ public class DAO {
 
     private HashMap<String, List<TweetContent>> retrieveImpactFromMySql(String startDate, String endDate, long userId, int tweetQty){
         HashMap<String, List<TweetContent>> impactResults = new HashMap<String, List<TweetContent>>();
-        //List<TweetContent> posResults = new ArrayList<TweetContent>();
-        //List<TweetContent> negResults = new ArrayList<TweetContent>();
         List<TweetContent> positiveResults = new ArrayList<TweetContent>();
         List<TweetContent> negativeResults = new ArrayList<TweetContent>();
 
         Connection conn = null;
         PreparedStatement stmt = null;
         String query = "SELECT CREATED_AT,TWEETS_TEXT FROM QUERY33 WHERE USER_ID=? AND CREATED_AT >= ? AND CREATED_AT <= ?; ";
-        //String query = "SELECT CREATED_AT,TWEETS_TEXT FROM QUERY33 WHERE USER_ID=?; ";
-        /*try{
-            conn = hikari.getConnection();
-
-            stmt = conn.prepareStatement(query);
-            stmt.setLong(1, userId);
-            ResultSet rs = stmt.executeQuery();
-            while(rs.next()){
-                String createdAt = rs.getString(1);
-                String tweetText = rs.getString(2);
-
-                String[] parts = tweetText.split(String.valueOf((char) 2)); //tweetText print result is "2" ???
-                for (int i=0; i<parts.length-1; i+=3) {
-                    String tweetId = parts[i];
-                    long score = Long.parseLong(parts[i+1]);
-                    String text = parts[i+2];
-                    TweetContent one = new TweetContent(createdAt, score, tweetId, text);
-                    if (score > 0) {
-                        posResults.add(one);
-                    } else if (score < 0) {
-                        negResults.add(one);
-                        System.out.printf("DAO: raw neg record = %s\n", one.getQ3Result());
-                    }
-                }
-            }
-
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-            Date start = sdf.parse(startDate);
-            Date end = sdf.parse(endDate);
-
-            List<TweetContent> positiveResults = new ArrayList<TweetContent>();
-            List<TweetContent> negativeResults = new ArrayList<TweetContent>();
-
-            for(int i = 0; i < posResults.size(); i++){
-                TweetContent each = posResults.get(i);
-                if((sdf.parse(each.getCreateDate()).after(start) || sdf.parse(each.getCreateDate()).equals(start))  && (sdf.parse(each.getCreateDate()).before(end) || sdf.parse(each.getCreateDate()).equals(end))){
-                    //System.out.printf("DAO: q3 pos to be removed tweet = %s\n", each.getQ3Result());
-                    positiveResults.add(each);
-                    //positiveResults.remove(i);
-                }
-            }
-            for(int i = 0; i < negResults.size(); i++){
-                TweetContent each = negResults.get(i);
-                if((sdf.parse(each.getCreateDate()).after(start) || sdf.parse(each.getCreateDate()).equals(start))  && (sdf.parse(each.getCreateDate()).before(end) || sdf.parse(each.getCreateDate()).equals(end))){
-                    System.out.printf("DAO: q3 neg tweet = %s\n", each.getQ3Result());
-                    negativeResults.add(each);
-                    //negativeResults.remove(i);
-                }
-            }
-
-            Collections.sort(positiveResults, comp);
-            Collections.sort(negativeResults, comp);
-
-            positiveResults = positiveResults.subList(0, Math.min(positiveResults.size(), tweetQty));
-            negativeResults = negativeResults.subList(0, Math.min(negativeResults.size(), tweetQty));
-            impactResults.put("Positive", positiveResults);
-            impactResults.put("Negative", negativeResults);
-        }
-        catch (SQLException e){
-            e.printStackTrace();
-        }
-        catch (ParseException e){
-            e.printStackTrace();
-        }
-        finally {
-            if(conn != null){
-                try{
-                    conn.close();
-                }
-                catch(SQLException e){
-                    e.printStackTrace();
-                }
-            }
-            if(stmt != null){
-                try{
-                    stmt.close();
-                }
-                catch (SQLException e){
-                    e.printStackTrace();
-                }
-            }
-        }*/
 
         try{
             conn = hikari.getConnection();
@@ -464,51 +326,6 @@ public class DAO {
                     }
                 }
             }
-
-            /*conn = hikari.getConnection();
-
-            stmt = conn.prepareStatement(query);
-            stmt.setBigDecimal(1, userId);
-            stmt.setString(2, startDate);
-            stmt.setString(3, endDate);
-
-            ResultSet rs = stmt.executeQuery();
-            //int positiveCount = 0;
-            //int negativeCount = 0;
-            while(rs.next()){
-                String createdAt = rs.getString(1);
-                String tweetText = rs.getString(2);
-                *//*int score = rs.getInt(2);
-                String tweetId = rs.getString(3);
-                String text = rs. getString(4);*//*
-
-                //System.out.printf("DAO: q3 raw text = %s\n", tweetQty);
-
-                String[] parts = tweetText.split(String.valueOf((char) 2)); //tweetText print result is "2" ???
-                for (int i=0; i<parts.length-1; i+=3) {
-                    String tweetId = parts[i];
-                    long score = Long.parseLong(parts[i+1]);
-                    String text = parts[i+2];
-                    TweetContent one = new TweetContent(createdAt, score, tweetId, text);
-                    if (score > 0) {
-                        positiveResults.add(one);
-                        } else if (score < 0) {
-                        negativeResults.add(one);
-                        }
-                }
-
-                // no need to use sort function, since retrieved data is already sorted
-                *//*if(score > 0 && positiveCount < tweetQty){
-                    TweetContent one = new TweetContent(createdAt, String.valueOf(score), tweetId, text);
-                    positiveResults.add(one);
-                    positiveCount++;
-                }
-                else if(score < 0 && negativeCount < tweetQty){
-                    TweetContent one = new TweetContent(createdAt, String.valueOf(score), tweetId, text);
-                    negativeResults.add(one);
-                    negativeCount++;
-                }*//*
-            }*/
 
             Collections.sort(positiveResults, comp);
             Collections.sort(negativeResults, comp);
@@ -566,7 +383,6 @@ public class DAO {
                 String[] records = mergeExtraRecords(preProcessRecords);
 
                 for(int i = 0; i < qty; i++){
-                    //System.out.printf("retrieveHashtagDataFromMysql: merge result = %s", records[i]);
                     if(i < records.length){
                         tagResults.add(new TweetContent("q4", records[i]));
                     }
@@ -599,14 +415,12 @@ public class DAO {
     }
 
     private int retrieveCountFromMysql(String useridMin, String useridMax){
-        System.out.printf("DAO: enter FromMysql...\n");
         Connection conn = null;
         PreparedStatement stmt = null;
         String query = "SELECT CUMULATIVE_TWEET_COUNT, USERID_TWEET_COUNT FROM QUERY5 WHERE USER_ID=? OR USER_ID=?";
 
         Long minUser = wholeUserIds.ceiling(Long.parseLong(useridMin));
         Long maxUser = wholeUserIds.floor(Long.parseLong(useridMax));
-        //System.out.printf("DAO: retrieveCountFromMysql-> minUser = %d, maxUser = %d...\n", minUser, maxUser);
 
         int count = 0;
         try{
@@ -617,20 +431,14 @@ public class DAO {
                 stmt.setLong(1, minUser);
                 stmt.setLong(2, maxUser);
                 ResultSet rs = stmt.executeQuery();
-                //System.out.printf("DAO: retrieved count data from mysql...\n");
 
                 int[] counts = new int[4]; //minPrev, minSelf, maxPrev, maxSelf
                 int i = 0;
                 while(rs.next()){
                     counts[i] = rs.getInt(1);    //minPrev or maxPrev
-                    //System.out.printf("DAO: raw data from mysql  minPrev or maxPrev = %d\n",rs.getInt(1));
                     counts[i+1] = rs.getInt(2);  //minSelf or maxSelf
-                    //System.out.printf("DAO: raw data from mysql  minSelf or maxSelf = %d\n",rs.getInt(2));
                     i+=2;
                 }
-
-                //System.out.printf("DAO: retrieveCountFromMysql-> minPrev = %d, minSelf = %d, maxPrev = %d, maxSelf = %d...\n", counts[0], counts[1], counts[2], counts[3]);
-
                 count = counts[2] - counts[0] + counts[3]; //maxPrev - minPrev + maxSelf
             }
         }
@@ -708,7 +516,6 @@ public class DAO {
 
         ArrayList<TweetContent> tweetResults = new ArrayList<TweetContent>();
 
-        //System.out.printf("DAO: retrieving data...\n");
 
         try{
             HTable table = new HTable(config, "teamproject");
@@ -719,11 +526,9 @@ public class DAO {
 
             Get g = new Get(rowKey.getBytes());
             Result rs = table.get(g);
-            //System.out.printf("DAO: get result...\n");
 
             byte[] value = rs.getValue(Bytes.toBytes("tweets"), Bytes.toBytes("value"));
             String valueStr = Bytes.toString(value);
-            //System.out.printf("DAO: result = %s\n", valueStr);
 
             tweetResults.add(new TweetContent(valueStr));
 
@@ -897,7 +702,6 @@ public class DAO {
 
         for(int i = 0; i < records.length; i++){
 
-            //System.out.printf("mergeExtraRecord: record = %s\n", records[i]);
 
             if(records[i].length() > 5 && records[i].substring(0, 5).equals("2014-")){
                 // means this line is a new record, so we know the bufferStr is end, and can be put into formal list now

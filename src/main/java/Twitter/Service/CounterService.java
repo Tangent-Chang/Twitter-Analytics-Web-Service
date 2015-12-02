@@ -24,7 +24,7 @@ public class CounterService extends HttpServlet{
     @Override
     public void init(){
         DAO dao = new DAO("MySQL");
-        //System.out.printf("Service: start to load all user ids...\n");
+        System.out.printf("Service: start to load all users...\n");
         dao.loadAllUserId();
     }
 
@@ -41,20 +41,14 @@ public class CounterService extends HttpServlet{
         response.setCharacterEncoding("UTF-8");
         OutputStream out = response.getOutputStream();
 
-        //System.out.printf("service: minUser = %s, maxUser = %s\n", useridMin, useridMax);
-
         out.write("TRINITY,9807-6280-2282\n".getBytes());
         if(useridMax.equals("0")){
             out.write("0".getBytes());
         }
         else if(Long.parseLong(useridMin) > Long.parseLong(useridMax)){
-            //if(new BigInteger(useridMin).compareTo(new BigInteger(useridMax)) > 0){
-            //System.out.printf("service: minUser greater than maxUser...\n");
-            //System.out.printf("service: minUserLong = %d, maxUserLong = %d", Long.parseLong(useridMin), Long.parseLong(useridMax));
             out.write("0".getBytes());
         }
         else{
-            //System.out.printf("service: normal...\n");
             total = dao.retrieveCount(useridMin, useridMax);
             out.write(total.getBytes());
         }
