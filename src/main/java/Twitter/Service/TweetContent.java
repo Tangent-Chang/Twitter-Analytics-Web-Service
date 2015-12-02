@@ -10,6 +10,7 @@ public class TweetContent {
     private String q6result; //tweet content only
     private long score;
     private String tweetId;
+    private String createDate;
 
 
     public TweetContent(String line){
@@ -18,6 +19,7 @@ public class TweetContent {
     public TweetContent(String createDate, long score, String tweetId, String tweetText){
         this.score = score;
         this.tweetId = tweetId;
+        this.createDate = createDate;
         this.q3result = createDate +","+ String.valueOf(score) +","+ tweetId +","+ tweetText;
     }
     public TweetContent(String query, String value){
@@ -61,6 +63,9 @@ public class TweetContent {
     }
     public String getTweetId(){
         return tweetId;
+    }
+    public String getCreateDate(){
+        return createDate;
     }
 
     public String getQ4result(){

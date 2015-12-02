@@ -36,7 +36,15 @@ public class TaggerService extends HttpServlet {
         String seq = request.getParameter("seq");
         String tweetId = request.getParameter("tweetid");
         String tag = request.getParameter("tag");
+
+        if (opt.equals("s")) {
+            response.getWriter().println("TRINITY,9807-6280-2282");
+            response.getWriter().println("0");
+            return;
+        }
+
         AsyncContext async = request.startAsync();
+        async.setTimeout(1000);
 
         if(transactions.containsKey(tid)){
             transactions.get(tid).handleReq(seq, opt, tweetId, tag, async);

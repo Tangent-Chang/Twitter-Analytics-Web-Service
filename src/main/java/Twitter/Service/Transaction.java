@@ -6,6 +6,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import javax.servlet.AsyncContext;
 import javax.servlet.ServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -25,7 +26,7 @@ public class Transaction implements Runnable{
     private PriorityQueue<Operation> operations = null;
     private HashMap<String, String> tagMap = null;
     private HashMap<String, String> tweetTextMap = null;
-    private int next = 0;
+    private int next = 1;
     private DAO dao = null;
 
     public Transaction(String tid){
@@ -105,7 +106,7 @@ public class Transaction implements Runnable{
 
             operations.offer(request);
 
-            if (!operations.isEmpty() && next == operations.peek().getSeq()) {
+            while (!operations.isEmpty() && next == operations.peek().getSeq()) {
                 Operation operation = operations.poll();
                 executeReq(operation);
                 next++;
@@ -201,17 +202,16 @@ public class Transaction implements Runnable{
     }
 
     public void writeResp(String message, ServletResponse resp) {
-        try{
+        try {
             resp.setContentType("text/plain");
             resp.setCharacterEncoding("UTF-8");
-            resp.getOutputStream().write(Bytes.toBytes("TRINITY,9807-6280-2282\n"));
-            resp.getOutputStream().write(Bytes.toBytes(message+"\n"));
-            resp.getOutputStream().close();
-        }
-        catch(IOException e){
+            String team = "TRINITY,9807-6280-2282\n";
+            resp.getOutputStream().write(team.getBytes(StandardCharsets.UTF_8));
+            message = message + "\n";
+            resp.getOutputStream().write(message.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
             e.printStackTrace();
-        }
-        catch(NullPointerException e){
+        } catch (NullPointerException e) {
             e.printStackTrace();
         }
 
