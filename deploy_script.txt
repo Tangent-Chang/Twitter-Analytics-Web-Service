@@ -21,9 +21,9 @@ sudo tar xvf apache-tomcat-8.0.28.tar.gz
 cd /opt/apache-tomcat-8.0.28/webapps/
 sudo rm -r ROOT
 sudo mkdir ROOT
+sudo chmod 777 ROOT
 cd ROOT
 # upload war to server ~/
-sudo mv ~/CloudTeam_war.war ./
 sudo jar -xvf CloudTeam_war.war
 sudo rm CloudTeam_war.war
 cd /opt/apache-tomcat-8.0.28/
@@ -49,6 +49,15 @@ bind-address=0.0.0.0
 cd /opt/apache-tomcat-8.0.28/bin/
 sudo nano setenv.sh
 export CATALINA_OPTS="$CATALINA_OPTS -Xms512m"
-export CATALINA_OPTS="$CATALINA_OPTS -Xmx4096m"
-export CATALINA_OPTS="$CATALINA_OPTS -XX:MaxPermSize=4096m"
-	
+export CATALINA_OPTS="$CATALINA_OPTS -Xmx5120m"
+export CATALINA_OPTS="$CATALINA_OPTS -XX:MaxPermSize=5120m"
+
+
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+aws s3 cp s3://ntnbucket/neha/q5data/user_counts.csv.gz ./
+gunzip user_counts.csv.gz
+
+aws s3 cp s3://ntnbucket/tangent/CloudTeam_war.war ./
+
+

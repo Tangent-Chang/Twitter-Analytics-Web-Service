@@ -10,16 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by YHWH on 11/23/15.
  */
 public class Transaction implements Runnable{
-    /*private boolean state = false; //true = start, false = not start or end.
-    private String tid = "";
-    private PriorityBlockingQueue<Operation> operations = null;
-    private int next = 0;
-    private DAO dao = null;*/
     private boolean end = false; //
     private String tid = "";
     private PriorityBlockingQueue<Operation> requests = null;
@@ -30,10 +26,6 @@ public class Transaction implements Runnable{
     private DAO dao = null;
 
     public Transaction(String tid){
-        /*this.tid = tid;
-        operations = new PriorityBlockingQueue<Operation>();
-        dao = new DAO("MySQL");*/
-
         this.tid = tid;
         requests = new PriorityBlockingQueue<Operation>();
         operations = new PriorityQueue<Operation>();
@@ -43,27 +35,6 @@ public class Transaction implements Runnable{
     }
 
     public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async) {
-    //public void handleReq(String sequence, String opt, String tweetId, String tag, AsyncContext async){
-        /*try{
-            if(opt.equals("s")){
-                state = true;
-                next = 1;
-                writeResp("0", async.getResponse());
-            }
-            else if(opt.equals("e")){
-                state = false;
-                writeResp("0", async.getResponse());
-            }
-            else{ //opt = a or r
-                if(operations.size() < 1 || operations.peek().getSeq() != Integer.parseInt(sequence)){
-                    Operation one = new Operation(sequence, opt, tweetId, tag, async);
-                    operations.offer(one);
-                }
-            }
-        }
-        catch(NullPointerException e){
-            e.printStackTrace();
-        }*/
         try {
             if (opt.equals("s")) {
                 Operation request = new Operation("0", opt, tweetId, tag, async);
@@ -87,18 +58,11 @@ public class Transaction implements Runnable{
         }
     }
 
-
     public void run() {
-        /*while(state){
-            if(operations.size() > 0 && next == operations.peek().getSeq()){
-                executeReq();
-                next++;
-            }
-        }*/
         Operation request = null;
         while (!end) {
             try {
-                request = requests.take();
+                request = requests.poll(10000, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 e.printStackTrace();
                 System.out.println(e);
@@ -127,47 +91,6 @@ public class Transaction implements Runnable{
     }
 
     public void executeReq(Operation operation) {
-    //public void executeReq(){
-        /*try{
-            String message = "";
-            Operation one = operations.take();
-
-            if(one.getOpt().equals("a")){
-                // check if there is already tweet content in hashtable
-                String content = TaggerService.data.get(one.getTweetId());
-                if(content==null){
-                    //no original content, set tag as original content
-                    content = one.getTag();
-                }
-                else{
-                    //has original content, append tag to content
-                    content = content + one.getTag();
-                }
-                //write update content back to hashtable
-                TaggerService.data.put(one.getTweetId(), content);
-                message = one.getTag();
-            }
-            else if(one.getOpt().equals("r")){
-                String content = dao.retrieveTweetContent(one.getTweetId());
-                //check if there is aleady tweet tag in hashtable
-                String tag = TaggerService.data.get(one.getTweetId());
-                if(tag!=null){
-                    //has tag, append it to content
-                    content = content + tag;
-                }
-                //write content to hashtable
-                TaggerService.data.put(one.getTweetId(), content);
-                message = content;
-            }
-            writeResp(message, one.getResp());
-            one.completeAsync();
-        }
-        catch(InterruptedException e){
-            e.printStackTrace();
-        }
-        catch(NullPointerException e){
-            e.printStackTrace();
-        }*/
         String response = "";
 
         if (operation.getOpt().equals("s")) {

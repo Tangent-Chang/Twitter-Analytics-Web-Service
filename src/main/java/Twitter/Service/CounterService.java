@@ -20,11 +20,11 @@ import java.util.TreeMap;
  */
 @WebServlet(urlPatterns={"/q5"})
 public class CounterService extends HttpServlet{
-
+    //DAO dao = new DAO("MySQL");
     @Override
     public void init(){
         DAO dao = new DAO("MySQL");
-        System.out.printf("Service: start to load all users...\n");
+        //System.out.printf("Service: start to load all users...\n");
         dao.loadAllUserId();
     }
 
@@ -43,12 +43,15 @@ public class CounterService extends HttpServlet{
 
         out.write("TRINITY,9807-6280-2282\n".getBytes());
         if(useridMax.equals("0")){
+            System.out.printf("Q5: max is zero...\n");
             out.write("0".getBytes());
         }
         else if(Long.parseLong(useridMin) > Long.parseLong(useridMax)){
+            System.out.printf("Q5: min is greater than max...\n");
             out.write("0".getBytes());
         }
         else{
+            System.out.printf("Q5: normal...\n");
             total = dao.retrieveCount(useridMin, useridMax);
             out.write(total.getBytes());
         }

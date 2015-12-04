@@ -45,14 +45,10 @@ public class TextService extends HttpServlet {
 
         response.setContentType("text/plain");
         response.setCharacterEncoding("UTF-8");
-        //PrintWriter out = response.getWriter();
         OutputStream out = response.getOutputStream();
 
-        //print out multiple results
-        //out.println("TRINITY,9807-6280-2282");
         out.write("TRINITY,9807-6280-2282\n".getBytes());
         for(TweetContent each : tweetResults){
-            //out.printf("%s", each.getLine());
             out.write(each.getLine().getBytes());
             out.close();
         }

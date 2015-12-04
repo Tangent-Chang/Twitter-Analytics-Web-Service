@@ -1,6 +1,5 @@
 package Twitter.Database;
 
-import Twitter.Service.TaggerService;
 import Twitter.Service.TweetContent;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hadoop.conf.Configuration;
@@ -17,23 +16,18 @@ import org.apache.hadoop.hbase.util.Bytes;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.*;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.Date;
 
 /**
  * Created by YHWH on 10/23/15.
  */
 public class DAO {
-    private String dbType; //HBase or MySQL
+    private String dbType; //HBase or MySQL or Memory
     private Configuration config = null;
     private static HikariDataSource hikari = null;
     private static TreeMap<String, Integer> wholeCountData = null;
-    private static TreeSet<Long> wholeUserIds = null;
+    public static TreeSet<Long> wholeUserIds = null;
 
     //setup which DB type this DAO object is going to deal with
     public DAO(String dbType){
@@ -64,7 +58,7 @@ public class DAO {
             hikari = new HikariDataSource();
             hikari.setMaximumPoolSize(100);
             hikari.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
-            hikari.addDataSourceProperty("serverName", "ec2-54-84-87-6.compute-1.amazonaws.com");
+            hikari.addDataSourceProperty("serverName", "localhost");
             hikari.addDataSourceProperty("port", "3306");
             hikari.addDataSourceProperty("databaseName", "teamproject");
             hikari.addDataSourceProperty("user", "client");
@@ -146,19 +140,12 @@ public class DAO {
         String count = "0";
 
         if(dbType.equals("MySQL")){
+            System.out.printf("DAO: enter retrieveCount...\n");
             int result = retrieveCountFromMysql(useridMin, useridMax);
             count = String.valueOf(result);
         }
         else if(dbType.equals("HBase")){
             int result = retrieveCountFromHBase(useridMin, useridMax);
-            count = String.valueOf(result);
-        }
-        else if(dbType.equals("Memory")){
-            if(wholeCountData.isEmpty()){
-                loadAllCountData();
-            }
-
-            int result = retrieveCountFromMemory(useridMin, useridMax);
             count = String.valueOf(result);
         }
         return count;
@@ -181,7 +168,6 @@ public class DAO {
         //load from csv
         try{
             FileReader file = new FileReader("/home/ubuntu/user_counts.csv");
-            //FileReader file = new FileReader("/Users/YHWH/Desktop/cloud computing/team project/user_counts_small.csv");
             BufferedReader buff = new BufferedReader(file);
             String line = "";
             boolean eof = false;
@@ -192,7 +178,6 @@ public class DAO {
                     eof = true;
                 }
                 else{
-                    //String[] data = line.split("\t"); //0->id, 1->selfCount, 2->prevCount
                     wholeUserIds.add(Long.parseLong(line.split("\t")[0]));
                 }
             }
@@ -203,6 +188,7 @@ public class DAO {
         }
     }
 
+    //no use, since we can't load all count data into memory
     private void loadAllCountData(){
         // load from csv
         try{
@@ -229,6 +215,7 @@ public class DAO {
         }
     }
 
+    //no use, since we can't load all count data into memory
     private int retrieveCountFromMemory(String useridMin, String useridMax){
         int count = 0;
         int minCount = 0;
@@ -380,6 +367,7 @@ public class DAO {
                 raw = raw.replaceAll("\t\n", "\n"); //reducer would add \t automatically if there is \n in the end of string
                 String[] preProcessRecords = raw.split("\n");
 
+                //if tweet content contains \n, there will be extra records
                 String[] records = mergeExtraRecords(preProcessRecords);
 
                 for(int i = 0; i < qty; i++){
@@ -414,6 +402,7 @@ public class DAO {
         return tagResults;
     }
 
+    // need to load all user ids
     private int retrieveCountFromMysql(String useridMin, String useridMax){
         Connection conn = null;
         PreparedStatement stmt = null;
